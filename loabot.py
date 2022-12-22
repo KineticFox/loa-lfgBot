@@ -95,7 +95,8 @@ class LegionRaidCreation(discord.ui.View):
         select.placeholder = select.values[0]
         mode = self.get_item('mode')
         mode.disabled = False
-        await interaction.response.send_message(f'du hast {select.values[0]} gewählt', embed=embed, view=self)
+        #await interaction.response.send_message(f'du hast {select.values[0]} gewählt', embed=embed, view=self)
+        await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.select(
         placeholder = "Choose a Mode!", 
@@ -118,9 +119,10 @@ class LegionRaidCreation(discord.ui.View):
         #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
         embed = interaction.message.embeds[0]
         embed.add_field(name=f'Raid Mode: ', value=select.values[0])
+        select.placeholder = select.values[0]
         createButton  = self.get_item('create')
         createButton.disabled = False
-        await interaction.response.send_message(f'du hast {select.values[0]} gewählt', embed=embed, view=self)
+        await interaction.response.edit_message(embed=embed, view=self)
         
 
     @discord.ui.button(
@@ -131,7 +133,11 @@ class LegionRaidCreation(discord.ui.View):
         disabled=True
     )
     async def button_callback(self, button, interaction):
-        await interaction.response.send_message('du hast den raid erstellt')
+        #await interaction.response.send_message('du hast den raid erstellt')
+        embed = interaction.message.embeds[0]
+        chanell = bot.get_channel(interaction.channel_id)
+        #message = await interaction.response.send_message("Raid erstellt")
+        await chanell.create_thread(name=f"{embed.title}")
 
 
 @bot.event
