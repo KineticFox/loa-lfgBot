@@ -136,8 +136,13 @@ class LegionRaidCreation(discord.ui.View):
         #await interaction.response.send_message('du hast den raid erstellt')
         embed = interaction.message.embeds[0]
         chanell = bot.get_channel(interaction.channel_id)
+        print(interaction.user.id)
         #message = await interaction.response.send_message("Raid erstellt")
-        await chanell.create_thread(name=f"{embed.title}")
+        await interaction.response.send_message('Join the Raid.')
+        raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
+        #await raidThread.add_user(bot.guild  get_user(interaction.user.id))
+        #await raidThread.join()
+
 
 
 @bot.event
