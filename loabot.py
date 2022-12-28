@@ -8,64 +8,25 @@ token = str(os.getenv("TOKEN"))
 bot = discord.Bot()
 
 
-class LegionRaid(discord.ui.Select):
-    
-    def __init__(self, raidtype):
-        super().__init__(
-            #select_type,
-            #custom_id=custom_id, 
-            placeholder='Choose Raid', 
-            min_values=1, 
-            max_values=1, 
-            options= [
-                discord.SelectOption(
-                    label="Clown",
-                    description="Legion raid Kaykol",
-                ),
-                discord.SelectOption(
-                    label="Vykas",
-                    description="Legion raid Vykas",
-                ),
-                discord.SelectOption(
-                    label="Brel",
-                    description="Legion raid Brelshaza",
-                )
-            ], 
-        )
-        self.raidtype = raidtype  
-
-    
-    async def callback(self, interaction:discord.Interaction):
-        self.raidtype = self.values[0]
-        await interaction.response.send_message(f"Du willst also {self.raidtype} erstellen")
-
-
 
     #async def on_timeout(self):
     #    for child in self.children:
     #        child.disabled = True
     #    await self.message.edit(content="Took to long", view=self)
 
-class CreateRaid(discord.ui.Button):
+raids = {"Argos":"Argos Abyss Raid", "Valtan":"valtan Legion Raid", "Vykas":"Vykas LEgion Raid", "Kakul-Saydon":"Kakul Legion Raid", "Brelshaza":"Brelshaza Legion Raid"}
 
-    def __init__(self, raidtype):
-        super().__init__(
-            style=discord.enums.ButtonStyle.green, 
-            label="Los", 
-            custom_id="interaction:DefaultButton"
-        )
-        self.raidtype = raidtype
-        
-
-    async def callback(self, interaction:discord.Interaction):
-        #message = await interaction.response.send_message("Verwalte den Raid")
-        #await message.create_thread(name="Legionraid")
-        await interaction.response.send_message(f'du hast geklickt und willst {self.raidtype} raiden')
 
 class LegionRaidCreation(discord.ui.View):
 
     def __init__(self):
         super().__init__(timeout=None)
+
+    def options():
+        list = []
+        for raid in raids:
+            list.append(discord.SelectOption(label=raid, description=raids[raid]))
+        return list
 
      
     @discord.ui.select(
@@ -73,20 +34,21 @@ class LegionRaidCreation(discord.ui.View):
         min_values = 1, 
         max_values = 1,
         custom_id='raid', 
-        options = [ 
-            discord.SelectOption(
-                label="Kakul-Saydon",
-                description="Kakul-Saydon Raid "
-            ),
-            discord.SelectOption(
-                label="Brelshaza",
-                description="Brelshaza raid"
-            ),
-            discord.SelectOption(
-                label="Vykas",
-                description="Vykas Raid"
-            )
-        ]
+        options = options()#[ 
+            #discord.SelectOption(
+            #    label="Kakul-Saydon",
+            #    description="Kakul-Saydon Raid "
+            #),
+            #discord.SelectOption(
+            #    label="Brelshaza",
+            #    description="Brelshaza raid"
+            #),
+            #discord.SelectOption(
+            #    label="Vykas",
+            #    description="Vykas Raid"
+            #)
+
+        #]
     )    
     async def selectRaid_callback(self, select, interaction):
         #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
@@ -136,13 +98,51 @@ class LegionRaidCreation(discord.ui.View):
         #await interaction.response.send_message('du hast den raid erstellt')
         embed = interaction.message.embeds[0]
         chanell = bot.get_channel(interaction.channel_id)
+        chanellUser = bot.get_user()
+        chanellUser.get_channel()
+
         print(interaction.user.id)
         #message = await interaction.response.send_message("Raid erstellt")
-        await interaction.response.send_message('Join the Raid.')
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
+        await interaction.response.send_message('Join the Raid.', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
         #await raidThread.add_user(bot.guild  get_user(interaction.user.id))
         #await raidThread.join()
 
+class JoinRaid(discord.ui.View):
+
+    def __init__(self, embed, channelID, thread):
+        super().__init__(timeout=None)
+        self.embed = embed
+        self.channelID = channelID
+        self.thread = thread
+        self.dps = 0
+        self.supp = 0
+        self.embed.add_field(name='DPS: ', value=self.dps)
+        self.embed.add_field(name='SUPP: ', value=self.dps)
+
+    @discord.ui.button(
+        label='DPS',
+        style=discord.ButtonStyle.green,
+        custom_id='join_dps'
+    )
+
+    async def dps_callback(self, button, interaction):
+        print(interaction.user)
+        self.dps += 1
+        self.embed.add_field(name=f'DPS', value=interaction.user, inline=True)
+        await self.thread.join()
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
+    @discord.ui.button(
+        label='SUPP',
+        style=discord.ButtonStyle.blurple,
+        custom_id='join_supp'
+    )
+    async def supp_callback(self, button, interaction):
+        self.supp += 1
+        self.embed.add_field(name=f'SUPP', value=interaction.user, inline=True)
+        await self.thread.join()
+        await interaction.response.edit_message(embed=self.embed, view=self)
 
 
 @bot.event
@@ -163,7 +163,7 @@ async def create_raid(ctx, title: discord.Option(str, 'Choose a title'), date: d
         title=title,
         color=discord.Colour.blue(),
     )
-    panel.add_field(name="Date/Time", value=time, inline=True)
+    panel.add_field(name="Date/Time: ", value=time, inline=True)
     panel.set_author(name=ctx.author)
 
     await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation())
