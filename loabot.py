@@ -14,8 +14,8 @@ bot = discord.Bot()
     #        child.disabled = True
     #    await self.message.edit(content="Took to long", view=self)
 
-raids = {"Argos":"Argos Abyss Raid", "Valtan":"valtan Legion Raid", "Vykas":"Vykas LEgion Raid", "Kakul-Saydon":"Kakul Legion Raid", "Brelshaza":"Brelshaza Legion Raid"}
-
+raids = {"Argos":"Argos Abyss Raid, max 8 players", "Valtan":"valtan Legion Raid, max 8 players", "Vykas":"Vykas Legion Raid, max 8 players", "Kakul-Saydon":"Kakul Legion Raid, max 4 players", "Brelshaza Normal":"Brelshaza Legion Raid, max 8 players"}
+modes = {"Argos":["Normal Mode, 1370"], "Valtan":["Normal Mode, 1415", "Hard Mode, 1445"], "Vykas":["Normal Mode, 1430", "Hard Mode, 1460"], "Kakul-Saydon":["Training mode, 1385","Normal Mode, 1475"], "Brelshaza Normal":["Training mode, 1430","Gate 1&2, 1490", "Gate 3&4, 1500", "Gate 5&6, 1520"]}
 
 class LegionRaidCreation(discord.ui.View):
 
@@ -28,35 +28,53 @@ class LegionRaidCreation(discord.ui.View):
             list.append(discord.SelectOption(label=raid, description=raids[raid]))
         return list
 
+    @discord.ui.button(
+        label="Cancel",
+        style=discord.ButtonStyle.red,
+        row=4,
+        custom_id='cancel',
+        disabled=False
+    )
+    async def buttonCancel_callback(self, button, interaction):
+        await interaction.message.delete()
+        
+
      
     @discord.ui.select(
         placeholder = "Choose a Raid!", 
         min_values = 1, 
         max_values = 1,
         custom_id='raid', 
-        options = options()#[ 
-            #discord.SelectOption(
-            #    label="Kakul-Saydon",
-            #    description="Kakul-Saydon Raid "
-            #),
-            #discord.SelectOption(
-            #    label="Brelshaza",
-            #    description="Brelshaza raid"
-            #),
-            #discord.SelectOption(
-            #    label="Vykas",
-            #    description="Vykas Raid"
-            #)
-
-        #]
+        options = options()
     )    
     async def selectRaid_callback(self, select, interaction):
         #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
         embed = interaction.message.embeds[0]
         embed.add_field(name=f'Raid: ', value=select.values[0])
         select.placeholder = select.values[0]
+        select.disabled = True
         mode = self.get_item('mode')
         mode.disabled = False
+        if select.values[0] == "Argos":
+            mode.add_option(discord.SelectOption(label=modes["Argos"][0]))
+        elif select.values[0] == "Valtan":
+            o1 = modes["Valtan"]
+            mode.append_option(discord.SelectOption(label=o1[0]))
+            mode.append_option(discord.SelectOption(label=o1[1]))
+        elif select.values[0] == "Vykas":
+            o1 = modes["Vykas"]
+            mode.append_option(discord.SelectOption(label=o1[0]))
+            mode.append_option(discord.SelectOption(label=o1[1]))
+        elif select.values[0] == "Kakul-Saydon":
+            o1 = modes["Kakul-Saydon"]
+            mode.append_option(discord.SelectOption(label=o1[0]))
+            mode.append_option(discord.SelectOption(label=o1[1]))
+        elif select.values[0] == "Brelshaza Normal":
+            o1 = modes["Brelshaza Normal"]
+            mode.append_option(discord.SelectOption(label=o1[0]))
+            mode.append_option(discord.SelectOption(label=o1[1]))
+            mode.append_option(discord.SelectOption(label=o1[2]))
+            mode.append_option(discord.SelectOption(label=o1[3]))
         #await interaction.response.send_message(f'du hast {select.values[0]} gewählt', embed=embed, view=self)
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -66,15 +84,11 @@ class LegionRaidCreation(discord.ui.View):
         max_values = 1,
         disabled=True,
         custom_id='mode', 
-        options = [ 
+        options = [
             discord.SelectOption(
-                label="Normal Mode (GS 1430)",
-                description="Kakul-Saydon Raid "
-            ),
-            discord.SelectOption(
-                label="Hard Mode (GS 1460)",
-                description="Brelshaza raid"
-            ),
+                label="None",
+                description="no selection made"
+            ), 
         ]
     )    
     async def selectMode_callback(self, select, interaction):
@@ -84,6 +98,7 @@ class LegionRaidCreation(discord.ui.View):
         select.placeholder = select.values[0]
         createButton  = self.get_item('create')
         createButton.disabled = False
+        select.disabled = True
         await interaction.response.edit_message(embed=embed, view=self)
         
 
@@ -95,16 +110,18 @@ class LegionRaidCreation(discord.ui.View):
         disabled=True
     )
     async def button_callback(self, button, interaction):
-        #await interaction.response.send_message('du hast den raid erstellt')
         embed = interaction.message.embeds[0]
         chanell = bot.get_channel(interaction.channel_id)
-        chanellUser = bot.get_user()
-        chanellUser.get_channel()
+        #chanellUser = bot.get_user()
+        #chanellUser.get_channel()
 
         print(interaction.user.id)
-        #message = await interaction.response.send_message("Raid erstellt")
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        await interaction.response.send_message('Join the Raid.', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        raidMessage = await interaction.response.send_message('Join the Raid.', embed=embed ,view=JoinRaid(embed, chanell, raidThread), ephemeral=False)
+        #testthread = await raidMessage.message.create_thread(name=f"Test nachricht thread")
+
+
+        #await interaction.message.delete()
         #await raidThread.add_user(bot.guild  get_user(interaction.user.id))
         #await raidThread.join()
 
@@ -166,7 +183,7 @@ async def create_raid(ctx, title: discord.Option(str, 'Choose a title'), date: d
     panel.add_field(name="Date/Time: ", value=time, inline=True)
     panel.set_author(name=ctx.author)
 
-    await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation())
+    await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(), ephemeral=True)
 
 
 
