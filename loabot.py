@@ -147,6 +147,10 @@ class JoinRaid(discord.ui.View):
     async def dps_callback(self, button, interaction):
         print(interaction.user)
         self.dps += 1
+
+        ef = self.embed.fields
+        for f in ef:
+            print(f.name)
         
         threadMeembers = await self.thread.fetch_members()
         for m in threadMeembers:
@@ -154,6 +158,7 @@ class JoinRaid(discord.ui.View):
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
                 self.embed.add_field(name=f'DPS', value=interaction.user, inline=True)
+                self.embed.set_field_at(3,name='DPS:', value=self.dps)
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
 
@@ -171,6 +176,7 @@ class JoinRaid(discord.ui.View):
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
                 self.embed.add_field(name=f'SUPP', value=interaction.user, inline=True)
+                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
 
