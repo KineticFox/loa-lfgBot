@@ -56,7 +56,8 @@ class LegionRaidCreation(discord.ui.View):
         mode = self.get_item('mode')
         mode.disabled = False
         if select.values[0] == "Argos":
-            mode.add_option(discord.SelectOption(label=modes["Argos"][0]))
+            o1 = modes["Argos"]
+            mode.append_option(discord.SelectOption(label=o1[0]))
         elif select.values[0] == "Valtan":
             o1 = modes["Valtan"]
             mode.append_option(discord.SelectOption(label=o1[0]))
@@ -146,9 +147,16 @@ class JoinRaid(discord.ui.View):
     async def dps_callback(self, button, interaction):
         print(interaction.user)
         self.dps += 1
-        self.embed.add_field(name=f'DPS', value=interaction.user, inline=True)
-        await self.thread.join()
-        await interaction.response.edit_message(embed=self.embed, view=self)
+        
+        threadMeembers = await self.thread.fetch_members()
+        for m in threadMeembers:
+            if interaction.user.id == m.id:
+                await interaction.response.send_message('you are already in this group', ephemeral=True)
+            else:
+                self.embed.add_field(name=f'DPS', value=interaction.user, inline=True)
+                await self.thread.add_user(interaction.user)
+                await interaction.response.edit_message(embed=self.embed, view=self)
+
 
     @discord.ui.button(
         label='SUPP',
@@ -157,9 +165,16 @@ class JoinRaid(discord.ui.View):
     )
     async def supp_callback(self, button, interaction):
         self.supp += 1
-        self.embed.add_field(name=f'SUPP', value=interaction.user, inline=True)
-        await self.thread.join()
-        await interaction.response.edit_message(embed=self.embed, view=self)
+        threadMeembers = await self.thread.fetch_members()
+        for m in threadMeembers:
+            if interaction.user.id == m.id:
+                await interaction.response.send_message('you are already in this group', ephemeral=True)
+            else:
+                self.embed.add_field(name=f'SUPP', value=interaction.user, inline=True)
+                await self.thread.add_user(interaction.user)
+                await interaction.response.edit_message(embed=self.embed, view=self)
+
+
 
 
 @bot.event
