@@ -1,3 +1,4 @@
+import asyncio
 import os
 import discord
 import dotenv
@@ -16,6 +17,7 @@ bot = discord.Bot()
 
 raids = {"Argos":"Argos Abyss Raid, max 8 players", "Valtan":"valtan Legion Raid, max 8 players", "Vykas":"Vykas Legion Raid, max 8 players", "Kakul-Saydon":"Kakul Legion Raid, max 4 players", "Brelshaza Normal":"Brelshaza Legion Raid, max 8 players"}
 modes = {"Argos":["Normal Mode, 1370"], "Valtan":["Normal Mode, 1415", "Hard Mode, 1445"], "Vykas":["Normal Mode, 1430", "Hard Mode, 1460"], "Kakul-Saydon":["Training mode, 1385","Normal Mode, 1475"], "Brelshaza Normal":["Training mode, 1430","Gate 1&2, 1490", "Gate 3&4, 1500", "Gate 5&6, 1520"]}
+chars = ['Artillerist', 'Gunslinger', 'Summoner', 'Berserk', 'Destroyer', 'Paladin', 'Bard', 'Lancemaster', 'Gunlancer', 'Scouter', 'Sorceress']
 
 class LegionRaidCreation(discord.ui.View):
 
@@ -50,7 +52,7 @@ class LegionRaidCreation(discord.ui.View):
     async def selectRaid_callback(self, select, interaction):
         #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
         embed = interaction.message.embeds[0]
-        embed.add_field(name=f'Raid: ', value=select.values[0])
+        embed.add_field(name=f'Raid: ', value=select.values[0], inline=True)
         select.placeholder = select.values[0]
         select.disabled = True
         mode = self.get_item('mode')
@@ -95,7 +97,7 @@ class LegionRaidCreation(discord.ui.View):
     async def selectMode_callback(self, select, interaction):
         #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
         embed = interaction.message.embeds[0]
-        embed.add_field(name=f'Raid Mode: ', value=select.values[0])
+        embed.add_field(name=f'Raid Mode: ', value=select.values[0], inline=True)
         select.placeholder = select.values[0]
         createButton  = self.get_item('create')
         createButton.disabled = False
@@ -137,6 +139,33 @@ class JoinRaid(discord.ui.View):
         self.supp = 0
         self.embed.add_field(name='DPS: ', value=self.dps)
         self.embed.add_field(name='SUPP: ', value=self.dps)
+        self.embed.add_field(name=chr(173), value=chr(173))
+        self.embed.add_field(name='DPS', value=chr(173))
+        self.embed.add_field(name='SUPP', value=chr(173))
+        self.selectedChar = ''
+        self.dpsvalue = []
+        self.suppvalue= []
+            
+
+    def chars():
+        list = []
+        for char in chars:
+            list.append(discord.SelectOption(label=char))
+        return list
+
+    @discord.ui.select(
+        placeholder = "Choose a Character", 
+        min_values = 1, 
+        max_values = 1,
+        custom_id='character', 
+        options = chars()
+    )
+
+    async def char_callback(self, select, interaction):
+       self.selectedChar = select.values[0]
+       #select.disabled = True
+       select.placeholder = select.values[0]
+       await interaction.response.edit_message(view=self)
 
     @discord.ui.button(
         label='DPS',
@@ -148,17 +177,20 @@ class JoinRaid(discord.ui.View):
         print(interaction.user)
         self.dps += 1
 
-        ef = self.embed.fields
-        for f in ef:
-            print(f.name)
+        #ef = self.embed.fields
+        #for f in ef:
+        #    print(f.name)
         
         threadMeembers = await self.thread.fetch_members()
         for m in threadMeembers:
             if interaction.user.id == m.id:
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
-                self.embed.add_field(name=f'DPS', value=interaction.user, inline=True)
+                self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+                self.dpsvalue.append(f'testchar - testuser1\n')
+                n = ''.join(self.dpsvalue)
                 self.embed.set_field_at(3,name='DPS:', value=self.dps)
+                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
 
@@ -175,8 +207,10 @@ class JoinRaid(discord.ui.View):
             if interaction.user.id == m.id:
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
-                self.embed.add_field(name=f'SUPP', value=interaction.user, inline=True)
+                self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+                n = ''.join(self.suppvalue)
                 self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
 
@@ -195,7 +229,7 @@ async def hello(ctx):
 @bot.slash_command(name="lfg", description="creates a raid")
 async def create_raid(ctx, title: discord.Option(str, 'Choose a title'), date: discord.Option(str, 'When?', required=True)):
     time = date
-    #title = title
+    ftitle = f'#{title}'
 
     panel = discord.Embed(
         title=title,
