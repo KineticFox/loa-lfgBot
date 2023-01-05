@@ -120,13 +120,13 @@ class LegionRaidCreation(discord.ui.View):
 
         print(interaction.user.id)
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        raidMessage = await interaction.response.send_message('Join the Raid.', embed=embed ,view=JoinRaid(embed, chanell, raidThread), ephemeral=False)
+        #raidMessage = await interaction.response.send_message('Join the Raid.', embed=embed ,view=JoinRaid(embed, chanell, raidThread), ephemeral=False)
+        await interaction.channel.send('test', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
         #testthread = await raidMessage.message.create_thread(name=f"Test nachricht thread")
 
-
-        #await interaction.message.delete()
+        await interaction.response.defer()
+        await interaction.delete_original_response()
         #await raidThread.add_user(bot.guild  get_user(interaction.user.id))
-        #await raidThread.join()
 
 class JoinRaid(discord.ui.View):
 
@@ -213,6 +213,23 @@ class JoinRaid(discord.ui.View):
                 self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
+    
+    @discord.ui.button(
+        label='leave',
+        style=discord.ButtonStyle.red,
+        custom_id='leave_thread'
+    )
+
+    async def leave_callback(self, button, interaction):
+        threadMeembers = await self.thread.fetch_members()
+        for m in threadMeembers:
+            if interaction.user.id == m.id:
+                
+                await self.thread.remove_user(interaction.user)
+                #self.embed
+                #await interaction.response.edit_message(embed=self.embed, view=self)
+
+
 
 
 
