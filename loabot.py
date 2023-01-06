@@ -218,7 +218,8 @@ class JoinRaid(discord.ui.View):
                 dps_button.disabled = True
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
-    
+
+#------------- leave section, embed aktuallisierung macht probleme  
     @discord.ui.button(
         label='leave',
         style=discord.ButtonStyle.red,
