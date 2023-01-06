@@ -219,8 +219,29 @@ class JoinRaid(discord.ui.View):
         threadMeembers = await self.thread.fetch_members()
         for m in threadMeembers:
             if interaction.user.id == m.id:
+                for dps in self.dpsvalue:
+                    if str(interaction.user) in dps:
+                        self.dps -=1
+                        self.dpsvalue.remove(dps)
+                        n = ''.join(self.dpsvalue)
+                        self.embed.set_field_at(3,name='DPS:', value=self.dps)
+                        self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+                    else:
+                        print(f'nope not in {dps}')
                 
+                for supp in self.suppvalue:
+                    if str(interaction.user) in supp:
+                        self.supp -=1
+                        self.suppvalue.remove(supp)
+                        n = ''.join(self.suppvalue)
+                        self.embed.set_field_at(3,name='SUPP:', value=self.supp)
+                        self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+                    else:
+                        print(f'nope not in {supp}')
+
+                await interaction.response.edit_message(embed=self.embed, view=self)
                 await self.thread.remove_user(interaction.user)
+                
                 #self.embed
                 #await interaction.response.edit_message(embed=self.embed, view=self)
 
