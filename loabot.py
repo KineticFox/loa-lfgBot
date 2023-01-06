@@ -175,18 +175,23 @@ class JoinRaid(discord.ui.View):
     async def dps_callback(self, button, interaction):
         #print(interaction.user)
         self.dps += 1
-        
+        char_select = self.get_item('character')
+        supp_button = self.get_item('join_supp')
         threadMeembers = await self.thread.fetch_members()
         for m in threadMeembers:
             if interaction.user.id == m.id:
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
                 self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+                char_select.placeholder = 'Choose a Character'
                 n = ''.join(self.dpsvalue)
                 self.embed.set_field_at(3,name='DPS:', value=self.dps)
                 self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+                button.disabled = True
+                supp_button.disabled = True
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
+                
 
 
     @discord.ui.button(
@@ -198,14 +203,19 @@ class JoinRaid(discord.ui.View):
     async def supp_callback(self, button, interaction):
         self.supp += 1
         threadMeembers = await self.thread.fetch_members()
+        char_select = self.get_item('character')
+        dps_button = self.get_item('join_dps')
         for m in threadMeembers:
             if interaction.user.id == m.id:
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
                 self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
                 n = ''.join(self.suppvalue)
+                char_select.placeholder = 'Choose a Character'
                 self.embed.set_field_at(4,name='SUPP:', value=self.supp)
                 self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+                button.disabled = True
+                dps_button.disabled = True
                 await self.thread.add_user(interaction.user)
                 await interaction.response.edit_message(embed=self.embed, view=self)
     
