@@ -50,7 +50,6 @@ class LegionRaidCreation(discord.ui.View):
         options = options()
     )    
     async def selectRaid_callback(self, select, interaction):
-        #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
         embed = interaction.message.embeds[0]
         embed.add_field(name=f'Raid: ', value=select.values[0], inline=True)
         select.placeholder = select.values[0]
@@ -78,7 +77,6 @@ class LegionRaidCreation(discord.ui.View):
             mode.append_option(discord.SelectOption(label=o1[1]))
             mode.append_option(discord.SelectOption(label=o1[2]))
             mode.append_option(discord.SelectOption(label=o1[3]))
-        #await interaction.response.send_message(f'du hast {select.values[0]} gewählt', embed=embed, view=self)
         await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.select(
@@ -95,7 +93,6 @@ class LegionRaidCreation(discord.ui.View):
         ]
     )    
     async def selectMode_callback(self, select, interaction):
-        #await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!")
         embed = interaction.message.embeds[0]
         embed.add_field(name=f'Raid Mode: ', value=select.values[0], inline=True)
         select.placeholder = select.values[0]
@@ -115,18 +112,14 @@ class LegionRaidCreation(discord.ui.View):
     async def button_callback(self, button, interaction):
         embed = interaction.message.embeds[0]
         chanell = bot.get_channel(interaction.channel_id)
-        #chanellUser = bot.get_user()
-        #chanellUser.get_channel()
-
-        print(interaction.user.id)
+        #print(interaction.user.id)
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        #raidMessage = await interaction.response.send_message('Join the Raid.', embed=embed ,view=JoinRaid(embed, chanell, raidThread), ephemeral=False)
-        await interaction.channel.send('test', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
-        #testthread = await raidMessage.message.create_thread(name=f"Test nachricht thread")
+        #await raidThread.add_user(interaction.user)
+        await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
 
         await interaction.response.defer()
         await interaction.delete_original_response()
-        #await raidThread.add_user(bot.guild  get_user(interaction.user.id))
+
 
 class JoinRaid(discord.ui.View):
 
@@ -145,6 +138,7 @@ class JoinRaid(discord.ui.View):
         self.selectedChar = ''
         self.dpsvalue = []
         self.suppvalue= []
+        self.disabled = True
             
 
     def chars():
@@ -165,21 +159,22 @@ class JoinRaid(discord.ui.View):
        self.selectedChar = select.values[0]
        #select.disabled = True
        select.placeholder = select.values[0]
+       dps_button = self.get_item('join_dps')
+       supp_button = self.get_item('join_supp')
+       dps_button.disabled = False
+       supp_button.disabled = False
        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(
         label='DPS',
         style=discord.ButtonStyle.green,
-        custom_id='join_dps'
+        custom_id='join_dps',
+        disabled=True
     )
 
     async def dps_callback(self, button, interaction):
-        print(interaction.user)
+        #print(interaction.user)
         self.dps += 1
-
-        #ef = self.embed.fields
-        #for f in ef:
-        #    print(f.name)
         
         threadMeembers = await self.thread.fetch_members()
         for m in threadMeembers:
@@ -187,7 +182,6 @@ class JoinRaid(discord.ui.View):
                 await interaction.response.send_message('you are already in this group', ephemeral=True)
             else:
                 self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-                self.dpsvalue.append(f'testchar - testuser1\n')
                 n = ''.join(self.dpsvalue)
                 self.embed.set_field_at(3,name='DPS:', value=self.dps)
                 self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
@@ -198,7 +192,8 @@ class JoinRaid(discord.ui.View):
     @discord.ui.button(
         label='SUPP',
         style=discord.ButtonStyle.blurple,
-        custom_id='join_supp'
+        custom_id='join_supp',
+        disabled=True
     )
     async def supp_callback(self, button, interaction):
         self.supp += 1
@@ -241,12 +236,11 @@ async def on_ready():
 
 @bot.slash_command(name = "hi", description = "say hi")
 async def hello(ctx):
-    await ctx.respond("hello")
+    await ctx.respond(f"hello {ctx.user}")
 
 @bot.slash_command(name="lfg", description="creates a raid")
 async def create_raid(ctx, title: discord.Option(str, 'Choose a title'), date: discord.Option(str, 'When?', required=True)):
     time = date
-    ftitle = f'#{title}'
 
     panel = discord.Embed(
         title=title,
