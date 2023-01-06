@@ -227,33 +227,59 @@ class JoinRaid(discord.ui.View):
 
     async def leave_callback(self, button, interaction):
         threadMeembers = await self.thread.fetch_members()
-        for m in threadMeembers:
-            if interaction.user.id == m.id:
-                for dps in self.dpsvalue:
-                    if str(interaction.user) in dps:
-                        self.dps -=1
-                        self.dpsvalue.remove(dps)
-                        n = ''.join(self.dpsvalue)
-                        self.embed.set_field_at(3,name='DPS:', value=self.dps)
-                        self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-                    else:
-                        print(f'nope not in {dps}')
-                
-                for supp in self.suppvalue:
-                    if str(interaction.user) in supp:
-                        self.supp -=1
-                        self.suppvalue.remove(supp)
-                        n = ''.join(self.suppvalue)
-                        self.embed.set_field_at(3,name='SUPP:', value=self.supp)
-                        self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-                    else:
-                        print(f'nope not in {supp}')
+        count = len(self.suppvalue) + len(self.dpsvalue)
+        if count <= 1:
+            await interaction.response.send_message('you can not leave, try to delete the group', ephemeral=True)
+        else:
+            for m in threadMeembers:
+                if interaction.user.id == m.id:
+                    for dps in self.dpsvalue:
+                        if str(interaction.user) in dps:
+                            self.dps -=1
+                            self.dpsvalue.remove(dps)
+                            if len(self.dpsvalue) < 1:
+                                self.embed.set_field_at(6, name='DPS', value=chr(173))
+                            else:
+                                n = ''.join(self.dpsvalue)
+                                self.embed.set_field_at(3,name='DPS:', value=self.dps)
+                                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+                            break
+                        else:
+                            print(f'nope not in dps {dps}')
+                            continue
+                    
+                    for supp in self.suppvalue:
+                        if str(interaction.user) in supp:
+                            self.supp -=1
+                            self.suppvalue.remove(supp)
+                            if len(self.suppvalue) < 1:
+                                self.embed.set_field_at(6, name='SUPP', value=chr(173))
+                            else:
+                                n = ''.join(self.suppvalue)
+                                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+                                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+                            break
+                        else:
+                            print(f'nope not in supp {supp}')
+                            continue
 
-                await interaction.response.edit_message(embed=self.embed, view=self)
-                await self.thread.remove_user(interaction.user)
-                
-                #self.embed
-                #await interaction.response.edit_message(embed=self.embed, view=self)
+            await interaction.response.edit_message(embed=self.embed, view=self)
+            await self.thread.remove_user(interaction.user)
+                    
+    @discord.ui.button(
+        label='delete',
+        style=discord.ButtonStyle.red,
+        custom_id='delete_thread'
+    )
+
+    async def delete_callback(self, button, interaction):
+        author = self.embed.author.name
+
+        if str(interaction.user) == author:
+            await self.thread.delete()
+            await interaction.response.defer()
+            await interaction.message.delete()
+
 
 
 
