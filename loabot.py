@@ -115,7 +115,8 @@ class LegionRaidCreation(discord.ui.View):
         #print(interaction.user.id)
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
         #await raidThread.add_user(interaction.user)
-        await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        #await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
 
         await interaction.response.defer()
         await interaction.delete_original_response()
@@ -175,18 +176,24 @@ class JoinRaid(discord.ui.View):
     async def dps_callback(self, button, interaction):
         #print(interaction.user)
         self.dps += 1
-        
+        char_select = self.get_item('character')
+        supp_button = self.get_item('join_supp')
         threadMeembers = await self.thread.fetch_members()
-        for m in threadMeembers:
-            if interaction.user.id == m.id:
-                await interaction.response.send_message('you are already in this group', ephemeral=True)
-            else:
-                self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-                n = ''.join(self.dpsvalue)
-                self.embed.set_field_at(3,name='DPS:', value=self.dps)
-                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-                await self.thread.add_user(interaction.user)
-                await interaction.response.edit_message(embed=self.embed, view=self)
+
+        if any(m.id == interaction.user.id for m in threadMeembers):
+            await interaction.response.send_message('you are already in this group', ephemeral=True)
+        else:
+            self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+            char_select.placeholder = 'Choose a Character'
+            n = ''.join(self.dpsvalue)
+            self.embed.set_field_at(3,name='DPS:', value=self.dps)
+            self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+            button.disabled = True
+            supp_button.disabled = True
+            await self.thread.add_user(interaction.user)
+            await interaction.response.edit_message(embed=self.embed, view=self)
+                
+                
 
 
     @discord.ui.button(
@@ -198,17 +205,23 @@ class JoinRaid(discord.ui.View):
     async def supp_callback(self, button, interaction):
         self.supp += 1
         threadMeembers = await self.thread.fetch_members()
-        for m in threadMeembers:
-            if interaction.user.id == m.id:
-                await interaction.response.send_message('you are already in this group', ephemeral=True)
-            else:
-                self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-                n = ''.join(self.suppvalue)
-                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
-                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-                await self.thread.add_user(interaction.user)
-                await interaction.response.edit_message(embed=self.embed, view=self)
-    
+        char_select = self.get_item('character')
+        dps_button = self.get_item('join_dps')
+
+        if any(m.id == interaction.user.id for m in threadMeembers):
+            await interaction.response.send_message('you are already in this group', ephemeral=True)
+        else:
+            self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+            n = ''.join(self.suppvalue)
+            char_select.placeholder = 'Choose a Character'
+            self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+            self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+            button.disabled = True
+            dps_button.disabled = True
+            await self.thread.add_user(interaction.user)
+            await interaction.response.edit_message(embed=self.embed, view=self)
+
+#------------- leave section, embed aktuallisierung macht probleme  
     @discord.ui.button(
         label='leave',
         style=discord.ButtonStyle.red,
@@ -217,34 +230,57 @@ class JoinRaid(discord.ui.View):
 
     async def leave_callback(self, button, interaction):
         threadMeembers = await self.thread.fetch_members()
-        for m in threadMeembers:
-            if interaction.user.id == m.id:
-                for dps in self.dpsvalue:
-                    if str(interaction.user) in dps:
-                        self.dps -=1
-                        self.dpsvalue.remove(dps)
-                        n = ''.join(self.dpsvalue)
-                        self.embed.set_field_at(3,name='DPS:', value=self.dps)
-                        self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-                    else:
-                        print(f'nope not in {dps}')
-                
-                for supp in self.suppvalue:
-                    if str(interaction.user) in supp:
-                        self.supp -=1
-                        self.suppvalue.remove(supp)
-                        n = ''.join(self.suppvalue)
-                        self.embed.set_field_at(3,name='SUPP:', value=self.supp)
-                        self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-                    else:
-                        print(f'nope not in {supp}')
+        count = len(self.suppvalue) + len(self.dpsvalue)
+        if count <= 1:
+            await interaction.response.send_message('you can not leave, try to delete the group', ephemeral=True)
+        else:
 
-                await interaction.response.edit_message(embed=self.embed, view=self)
-                await self.thread.remove_user(interaction.user)
-                
-                #self.embed
-                #await interaction.response.edit_message(embed=self.embed, view=self)
+            if any(m.id == interaction.user.id for m in threadMeembers):                
+                    for dps in self.dpsvalue:
+                        if str(interaction.user) in dps:
+                            self.dps -=1
+                            self.dpsvalue.remove(dps)
+                            if len(self.dpsvalue) < 1:
+                                self.embed.set_field_at(6, name='DPS', value=chr(173))
+                            else:
+                                n = ''.join(self.dpsvalue)
+                                self.embed.set_field_at(3,name='DPS:', value=self.dps)
+                                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+                            break
+                    
+                    
+                    for supp in self.suppvalue:
+                        if str(interaction.user) in supp:
+                            self.supp -=1
+                            self.suppvalue.remove(supp)
+                            if len(self.suppvalue) < 1:
+                                self.embed.set_field_at(6, name='SUPP', value=chr(173))
+                            else:
+                                n = ''.join(self.suppvalue)
+                                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+                                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+                            break
 
+
+            await interaction.response.edit_message(embed=self.embed, view=self)
+            await self.thread.remove_user(interaction.user)
+                    
+    @discord.ui.button(
+        label='delete',
+        style=discord.ButtonStyle.red,
+        custom_id='delete_thread'
+    )
+
+    async def delete_callback(self, button, interaction):
+        author = self.embed.author.name
+
+        if str(interaction.user) == author:
+            await self.thread.delete()
+            await interaction.response.defer()
+            await interaction.message.delete()
+
+#TODO: improve editing of the embed
+# --> work with embed.to_dict / embed.from_dict
 
 
 
