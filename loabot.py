@@ -115,7 +115,8 @@ class LegionRaidCreation(discord.ui.View):
         #print(interaction.user.id)
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
         #await raidThread.add_user(interaction.user)
-        await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        #await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
 
         await interaction.response.defer()
         await interaction.delete_original_response()
@@ -178,19 +179,20 @@ class JoinRaid(discord.ui.View):
         char_select = self.get_item('character')
         supp_button = self.get_item('join_supp')
         threadMeembers = await self.thread.fetch_members()
-        for m in threadMeembers:
-            if interaction.user.id == m.id:
-                await interaction.response.send_message('you are already in this group', ephemeral=True)
-            else:
-                self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-                char_select.placeholder = 'Choose a Character'
-                n = ''.join(self.dpsvalue)
-                self.embed.set_field_at(3,name='DPS:', value=self.dps)
-                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-                button.disabled = True
-                supp_button.disabled = True
-                await self.thread.add_user(interaction.user)
-                await interaction.response.edit_message(embed=self.embed, view=self)
+
+        if any(m.id == interaction.user.id for m in threadMeembers):
+            await interaction.response.send_message('you are already in this group', ephemeral=True)
+        else:
+            self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+            char_select.placeholder = 'Choose a Character'
+            n = ''.join(self.dpsvalue)
+            self.embed.set_field_at(3,name='DPS:', value=self.dps)
+            self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+            button.disabled = True
+            supp_button.disabled = True
+            await self.thread.add_user(interaction.user)
+            await interaction.response.edit_message(embed=self.embed, view=self)
+                
                 
 
 
@@ -205,19 +207,19 @@ class JoinRaid(discord.ui.View):
         threadMeembers = await self.thread.fetch_members()
         char_select = self.get_item('character')
         dps_button = self.get_item('join_dps')
-        for m in threadMeembers:
-            if interaction.user.id == m.id:
-                await interaction.response.send_message('you are already in this group', ephemeral=True)
-            else:
-                self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-                n = ''.join(self.suppvalue)
-                char_select.placeholder = 'Choose a Character'
-                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
-                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-                button.disabled = True
-                dps_button.disabled = True
-                await self.thread.add_user(interaction.user)
-                await interaction.response.edit_message(embed=self.embed, view=self)
+
+        if any(m.id == interaction.user.id for m in threadMeembers):
+            await interaction.response.send_message('you are already in this group', ephemeral=True)
+        else:
+            self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
+            n = ''.join(self.suppvalue)
+            char_select.placeholder = 'Choose a Character'
+            self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+            self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+            button.disabled = True
+            dps_button.disabled = True
+            await self.thread.add_user(interaction.user)
+            await interaction.response.edit_message(embed=self.embed, view=self)
 
 #------------- leave section, embed aktuallisierung macht probleme  
     @discord.ui.button(
@@ -232,8 +234,8 @@ class JoinRaid(discord.ui.View):
         if count <= 1:
             await interaction.response.send_message('you can not leave, try to delete the group', ephemeral=True)
         else:
-            for m in threadMeembers:
-                if interaction.user.id == m.id:
+
+            if any(m.id == interaction.user.id for m in threadMeembers):                
                     for dps in self.dpsvalue:
                         if str(interaction.user) in dps:
                             self.dps -=1
@@ -245,9 +247,7 @@ class JoinRaid(discord.ui.View):
                                 self.embed.set_field_at(3,name='DPS:', value=self.dps)
                                 self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
                             break
-                        else:
-                            print(f'nope not in dps {dps}')
-                            continue
+                    
                     
                     for supp in self.suppvalue:
                         if str(interaction.user) in supp:
@@ -260,9 +260,7 @@ class JoinRaid(discord.ui.View):
                                 self.embed.set_field_at(4,name='SUPP:', value=self.supp)
                                 self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
                             break
-                        else:
-                            print(f'nope not in supp {supp}')
-                            continue
+
 
             await interaction.response.edit_message(embed=self.embed, view=self)
             await self.thread.remove_user(interaction.user)
@@ -281,7 +279,8 @@ class JoinRaid(discord.ui.View):
             await interaction.response.defer()
             await interaction.message.delete()
 
-
+#TODO: improve editing of the embed
+# --> work with embed.to_dict / embed.from_dict
 
 
 
