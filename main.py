@@ -1,6 +1,7 @@
 import os
 import discord
 from discord.ext import commands
+from loabot_db import LBDB
 import dotenv
 
 
@@ -10,9 +11,6 @@ def run():
     intents = discord.Intents.all()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents)
-
-
-
 
     @bot.event
     async def on_ready():
@@ -26,6 +24,8 @@ def run():
         if extension == 'greetingBot':
             greeting = bot.get_cog('WelcomeBot')
             await greeting.setupGuild()
+        elif extension == 'loabot':
+            print('db things')
         await bot.sync_commands()
         await ctx.send(f'cog loaded, it may take while until the slashcommands are available')
     
@@ -50,7 +50,6 @@ def run():
             extensions.append(e)
         
         await ctx.send('Loaded extensions: ' + ' '.join(extensions), delete_after=60)
-    
 
     
     bot.run(token)

@@ -4,6 +4,7 @@ import discord
 import dotenv
 from discord.ext import commands
 from discord.commands import SlashCommand
+from loabot_db import LBDB
 
 
 #bot = discord.Bot()
@@ -21,9 +22,10 @@ chars = ['Artillerist', 'Gunslinger', 'Summoner', 'Berserk', 'Destroyer', 'Palad
 
 class LegionRaidCreation(discord.ui.View):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db):
         super().__init__(timeout=None)
         self.bot = bot
+        self.db = db
 
     def options():
         list = []
@@ -124,18 +126,20 @@ class LegionRaidCreation(discord.ui.View):
         await interaction.response.defer()
         await interaction.delete_original_response()
 
-
+#TODO joinen funktioniert, leaven hingegn hat manchmal anomalien und löscht falschen benutzer
+# have to supbcalss selects for better usability and get acces to user interacting 
+# that might help: https://stackoverflow.com/questions/75575015/discord-py-multiple-select-menu-interactions-get-mixed-up
 class JoinRaid(discord.ui.View):
 
-    def __init__(self, embed, channelID, thread):
+    def __init__(self, embed, channelID, thread, db):
         super().__init__(timeout=None)
         self.embed = embed
         self.channelID = channelID
         self.thread = thread
         self.dps = 0
         self.supp = 0
-        self.embed.add_field(name='DPS: ', value=self.dps)
-        self.embed.add_field(name='SUPP: ', value=self.dps)
+        self.embed.add_field(name='Anzahl DPS: ', value=self.dps)
+        self.embed.add_field(name='Anzahl SUPP: ', value=self.dps)
         self.embed.add_field(name=chr(173), value=chr(173))
         self.embed.add_field(name='DPS', value=chr(173))
         self.embed.add_field(name='SUPP', value=chr(173))
@@ -143,12 +147,13 @@ class JoinRaid(discord.ui.View):
         self.dpsvalue = []
         self.suppvalue= []
         self.disabled = True
+        self.db = db
             
 
     def chars():
         list = []
-        for char in chars:
-            list.append(discord.SelectOption(label=char))
+        #for char in chars:
+        #    list.append(discord.SelectOption(label=char))
         return list
 
     @discord.ui.select(
@@ -189,10 +194,12 @@ class JoinRaid(discord.ui.View):
             self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
             char_select.placeholder = 'Choose a Character'
             n = ''.join(self.dpsvalue)
-            self.embed.set_field_at(3,name='DPS:', value=self.dps)
+            self.embed.set_field_at(3,name='Anzahl DPS:', value=self.dps)
             self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
             button.disabled = True
             supp_button.disabled = True
+            testdict = self.embed.to_dict()
+            print('test dict: ', testdict)
             await self.thread.add_user(interaction.user)
             await interaction.response.edit_message(embed=self.embed, view=self)
                 
@@ -217,19 +224,40 @@ class JoinRaid(discord.ui.View):
             self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
             n = ''.join(self.suppvalue)
             char_select.placeholder = 'Choose a Character'
-            self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+            self.embed.set_field_at(4,name='Anzahl SUPP:', value=self.supp)
             self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
             button.disabled = True
             dps_button.disabled = True
             await self.thread.add_user(interaction.user)
             await interaction.response.edit_message(embed=self.embed, view=self)
 
-#------------- leave section, embed aktuallisierung macht probleme  
+
+
+#------------- leave section, embed aktuallisierung macht probleme
+#
+#{
+#    'author': {'name': 'MrXilef#8048'}, 
+#    'fields': [
+#        {'name': 'Date/Time:', 'value': 'now', 'inline': True}, 
+#        {'name': 'Raid:', 'value': 'Brelshaza Normal', 'inline': True}, 
+#        {'name': 'Raid Mode:', 'value': 'Gate 1&2, 1490', 'inline': True}, 
+#        {'name': 'DPS:', 'value': '1', 'inline': True}, 
+#        {'name': 'SUPP: ', 'value': '0', 'inline': True}, 
+#        {'name': '\xad', 'value': '\xad', 'inline': True}, 
+#        {'name': 'DPS', 'value': 'Destroyer - MrXilef#8048\n', 'inline': True}, 
+#        {'name': 'SUPP', 'value': '\xad', 'inline': True}
+#    ], 
+#    'color': 3447003, 'type': 'rich', 'title': 'test'
+#}
+
+
+  
     @discord.ui.button(
         label='leave',
         style=discord.ButtonStyle.red,
         custom_id='leave_thread'
     )
+
 
     async def leave_callback(self, button, interaction):
         threadMeembers = await self.thread.fetch_members()
@@ -289,8 +317,9 @@ class JoinRaid(discord.ui.View):
 
 class loaLFGBot(commands.Cog):
 
-    def __init__(self,bot):
+    def __init__(self,bot, db):
         self.bot = bot
+        self.db = db
 
     @commands.slash_command(name = "hi", description = "say hi")
     async def hello(self, ctx):
@@ -309,10 +338,31 @@ class loaLFGBot(commands.Cog):
 
         await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot), ephemeral=True)
     
+    @discord.slash_command(name="db_adduser", description="adds the user to the DB")
+    async def db_adduser(self, ctx):
+        print(ctx.author.id)     
+        self.db.add_user(ctx.author.name)
+    
+    @discord.slash_command(name="db_showtable", description="shows alll rows of given table")
+    async def db_showtable(self, ctx, table: discord.Option(str, 'name of the table', required=True)):
+        print(self.db.show(table))
+    
+    @discord.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
+    async def db_addchars(self, ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True)):
+        self.db.add_chars(char, cl, ctx.author.name)
+        await ctx.respond('added your char to the DB', ephemeral=True, delete_after=20)
+    
+    @discord.slash_command(name="db_getchars", description="shows all chars of the user")
+    async def db_getchars(self, ctx):
+        res = self.db.get_chars(ctx.author.name)
+        await ctx.respond(f'Your chars: {res}', ephemeral=True)
+    
     
 
 def setup(bot):
-    bot.add_cog(loaLFGBot(bot))
+    db = LBDB()
+    db.setup()
+    bot.add_cog(loaLFGBot(bot, db))
 
 
 #bot.run(token)
