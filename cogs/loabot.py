@@ -121,10 +121,46 @@ class LegionRaidCreation(discord.ui.View):
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
         #await raidThread.add_user(interaction.user)
         #await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
-        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread, self.db))
 
         await interaction.response.defer()
         await interaction.delete_original_response()
+
+class CharSelect(discord.ui.Select):
+    def __init__(self, optionlist) -> None:
+        self.olist = optionlist
+
+        def set_options():
+            list=[]
+            for char in optionlist:
+                list.append(discord.SelectOption(label=char))
+            return list
+    
+        super().__init__(custom_id='n_character', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
+
+    async def callback(self, interaction: discord.Interaction):
+        selectedChar = self.values[0]
+        self.placeholder = self.values[0]
+        self.view.add_item(DPSButton())           
+
+        await interaction.response.edit_message(view=self.view)
+
+class DPSButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            style=discord.ButtonStyle.green, 
+            label='DPS_new', 
+            disabled=False, 
+            custom_id='join_dps_new', 
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        #TODO pass thread down to button
+        await interaction.response.edit_message(view=self.view)
+    
+    
+    
+
 
 #TODO joinen funktioniert, leaven hingegn hat manchmal anomalien und löscht falschen benutzer
 # have to supbcalss selects for better usability and get acces to user interacting 
@@ -133,6 +169,7 @@ class JoinRaid(discord.ui.View):
 
     def __init__(self, embed, channelID, thread, db):
         super().__init__(timeout=None)
+        
         self.embed = embed
         self.channelID = channelID
         self.thread = thread
@@ -148,31 +185,25 @@ class JoinRaid(discord.ui.View):
         self.suppvalue= []
         self.disabled = True
         self.db = db
-            
+        self.user_chars = []
 
-    def chars():
-        list = []
-        #for char in chars:
-        #    list.append(discord.SelectOption(label=char))
-        return list
+    @discord.ui.button(
+        label='join Raid',
+        style=discord.ButtonStyle.green,
 
-    @discord.ui.select(
-        placeholder = "Choose a Character", 
-        min_values = 1, 
-        max_values = 1,
-        custom_id='character', 
-        options = chars()
     )
 
-    async def char_callback(self, select, interaction):
-       self.selectedChar = select.values[0]
-       #select.disabled = True
-       select.placeholder = select.values[0]
-       dps_button = self.get_item('join_dps')
-       supp_button = self.get_item('join_supp')
-       dps_button.disabled = False
-       supp_button.disabled = False
-       await interaction.response.edit_message(view=self)
+    async def join_callback(self, button, interaction):
+        user = interaction.user.name
+        self.user_chars = self.db.select_chars(user)
+        #charselect = self.get_item('character')
+        #charselect.disabled = False
+        self.add_item(CharSelect(self.user_chars))
+        await interaction.response.edit_message(view=self)
+
+        print('chars ', self.user_chars)
+        
+#----obsolete-----#
 
     @discord.ui.button(
         label='DPS',
@@ -203,7 +234,7 @@ class JoinRaid(discord.ui.View):
             await self.thread.add_user(interaction.user)
             await interaction.response.edit_message(embed=self.embed, view=self)
                 
-                
+#---------end ---------#              
 
 
     @discord.ui.button(
@@ -336,7 +367,7 @@ class loaLFGBot(commands.Cog):
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=ctx.author)
 
-        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot), ephemeral=True)
+        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot, self.db), ephemeral=True)
     
     @discord.slash_command(name="db_adduser", description="adds the user to the DB")
     async def db_adduser(self, ctx):

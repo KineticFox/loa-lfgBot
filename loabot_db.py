@@ -3,6 +3,7 @@ import sqlite3
 class LBDB:
     def __init__(self) -> None:
         self.con = sqlite3.connect('loabot.db')
+        self.con.row_factory =  lambda cursor, row: row[0]
         self.cur = self.con.cursor()
 
     def createTables(self):
@@ -18,6 +19,7 @@ class LBDB:
     
     def setup(self):
         self.createTables()
+        
 
     def get_chars(self, user):
         res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user where name="{user}")')
@@ -32,10 +34,13 @@ class LBDB:
         self.con.commit()
 
 
-
     def show(self, table):
         res = self.cur.execute(f'SELECT * FROM {table}')
         return res.fetchall()
+    
+    def select_chars(self, username,):
+        res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user WHERE name="{username}")').fetchall()
+        return res
 
 
 #db = LBDB()
