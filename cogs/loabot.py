@@ -126,38 +126,83 @@ class LegionRaidCreation(discord.ui.View):
         await interaction.response.defer()
         await interaction.delete_original_response()
 
+#--------------------- Subclassed view elements -----------------------------------#
+
 class CharSelect(discord.ui.Select):
     def __init__(self, optionlist) -> None:
         self.olist = optionlist
-
         def set_options():
             list=[]
             for char in optionlist:
                 list.append(discord.SelectOption(label=char))
             return list
     
-        super().__init__(custom_id='n_character', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
+        super().__init__(custom_id='character_selection', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
 
     async def callback(self, interaction: discord.Interaction):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
-        self.view.add_item(DPSButton())           
+        self.view.add_item(DPSButton(selectedChar))           
 
         await interaction.response.edit_message(view=self.view)
 
 class DPSButton(discord.ui.Button):
-    def __init__(self):
+    def __init__(self, selection):
+        self.char = selection
+
         super().__init__(
             style=discord.ButtonStyle.green, 
-            label='DPS_new', 
+            label='DPS', 
             disabled=False, 
-            custom_id='join_dps_new', 
+            custom_id='join_dps', 
         )
     
     async def callback(self, interaction: discord.Interaction):
+        threadMeembers = await self.view.thread.fetch_members()
+        char_select = self.view.get_item('character_selection')
         #TODO pass thread down to button
-        await interaction.response.edit_message(view=self.view)
+        if any(m.id == interaction.user.id for m in threadMeembers):
+            await interaction.response.send_message('you are already in this group', ephemeral=True)
+        else:
+            self.view.dpsvalue.append(f'{self.char} - {interaction.user.name}\n')
+            #char_select.placeholder = 'Choose a Character'
+            n = ''.join(self.view.dpsvalue)
+            self.view.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.dps)
+            self.view.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+            #button.disabled = True
+            #supp_button.disabled = True
+            #testdict = self.embed.to_dict()
+            #print('test dict: ', testdict)
+            await self.view.thread.add_user(interaction.user)
+            self.view.remove_item(char_select)
+            self.view.remove_item(self)
+            await interaction.response.edit_message(embed=self.view.embed, view=self.view)
+
+class SUPPButton(discord.ui.Button):
+    def __init__(self, selection):
+        self.char = selection
+        super().__init__(
+            style=discord.ButtonStyle.blurple, 
+            label = 'SUPP', 
+            disabled=False, 
+            custom_id='join_supp'
+            #,  row
+            )
     
+    async def callback(self, interaction: discord.Interaction):
+        self.view.supp += 1
+        threadMeembers = await self.thread.fetch_members()
+        char_select = self.char
+
+        if any(m.id == interaction.user.id for m in threadMeembers):
+            await interaction.response.send_message('you are already in this group', ephemeral=True)
+        else:
+            self.view.suppvalue.append(f'{self.char} - {interaction.user.name}\n')
+            n = ''.join(self.view.suppvalue)
+            self.view.embed.set_field_at(4,name='Anzahl SUPP:', value=self.supp)
+            self.view.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+            await self.view.thread.add_user(interaction.user)
+            await interaction.response.edit_message(embed=self.view.embed, view=self.view)
     
     
 
@@ -200,68 +245,6 @@ class JoinRaid(discord.ui.View):
         #charselect.disabled = False
         self.add_item(CharSelect(self.user_chars))
         await interaction.response.edit_message(view=self)
-
-        print('chars ', self.user_chars)
-        
-#----obsolete-----#
-
-    @discord.ui.button(
-        label='DPS',
-        style=discord.ButtonStyle.green,
-        custom_id='join_dps',
-        disabled=True
-    )
-
-    async def dps_callback(self, button, interaction):
-        #print(interaction.user)
-        self.dps += 1
-        char_select = self.get_item('character')
-        supp_button = self.get_item('join_supp')
-        threadMeembers = await self.thread.fetch_members()
-
-        if any(m.id == interaction.user.id for m in threadMeembers):
-            await interaction.response.send_message('you are already in this group', ephemeral=True)
-        else:
-            self.dpsvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-            char_select.placeholder = 'Choose a Character'
-            n = ''.join(self.dpsvalue)
-            self.embed.set_field_at(3,name='Anzahl DPS:', value=self.dps)
-            self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-            button.disabled = True
-            supp_button.disabled = True
-            testdict = self.embed.to_dict()
-            print('test dict: ', testdict)
-            await self.thread.add_user(interaction.user)
-            await interaction.response.edit_message(embed=self.embed, view=self)
-                
-#---------end ---------#              
-
-
-    @discord.ui.button(
-        label='SUPP',
-        style=discord.ButtonStyle.blurple,
-        custom_id='join_supp',
-        disabled=True
-    )
-    async def supp_callback(self, button, interaction):
-        self.supp += 1
-        threadMeembers = await self.thread.fetch_members()
-        char_select = self.get_item('character')
-        dps_button = self.get_item('join_dps')
-
-        if any(m.id == interaction.user.id for m in threadMeembers):
-            await interaction.response.send_message('you are already in this group', ephemeral=True)
-        else:
-            self.suppvalue.append(f'{self.selectedChar} - {interaction.user}\n')
-            n = ''.join(self.suppvalue)
-            char_select.placeholder = 'Choose a Character'
-            self.embed.set_field_at(4,name='Anzahl SUPP:', value=self.supp)
-            self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-            button.disabled = True
-            dps_button.disabled = True
-            await self.thread.add_user(interaction.user)
-            await interaction.response.edit_message(embed=self.embed, view=self)
-
 
 
 #------------- leave section, embed aktuallisierung macht probleme
