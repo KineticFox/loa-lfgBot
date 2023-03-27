@@ -146,6 +146,8 @@ class CharSelect(discord.ui.Select):
 
         await interaction.response.edit_message(view=self.view)
 
+
+#TODO edit original response, not new interaction
 class DPSButton(discord.ui.Button):
     def __init__(self, selection):
         self.char = selection
@@ -158,25 +160,25 @@ class DPSButton(discord.ui.Button):
         )
     
     async def callback(self, interaction: discord.Interaction):
-        threadMeembers = await self.view.thread.fetch_members()
+        threadMeembers = await self.view.orgview.thread.fetch_members()
         char_select = self.view.get_item('character_selection')
-        #TODO pass thread down to button
+
         if any(m.id == interaction.user.id for m in threadMeembers):
             await interaction.response.send_message('you are already in this group', ephemeral=True)
         else:
-            self.view.dpsvalue.append(f'{self.char} - {interaction.user.name}\n')
+            self.view.orgview.dpsvalue.append(f'{self.char} - {interaction.user.name}\n')
             #char_select.placeholder = 'Choose a Character'
-            n = ''.join(self.view.dpsvalue)
-            self.view.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.dps)
-            self.view.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+            n = ''.join(self.view.orgview.dpsvalue)
+            self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.orgview.dps)
+            self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
             #button.disabled = True
             #supp_button.disabled = True
             #testdict = self.embed.to_dict()
             #print('test dict: ', testdict)
-            await self.view.thread.add_user(interaction.user)
-            self.view.remove_item(char_select)
-            self.view.remove_item(self)
-            await interaction.response.edit_message(embed=self.view.embed, view=self.view)
+            await self.view.orgview.thread.add_user(interaction.user)
+            #self.view.remove_item(char_select)
+            #self.view.remove_item(self)
+            await interaction.response.edit_message(embed=self.view.orgview.embed, view=self.view.orgview)
 
 class SUPPButton(discord.ui.Button):
     def __init__(self, selection):
@@ -203,7 +205,25 @@ class SUPPButton(discord.ui.Button):
             self.view.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
             await self.view.thread.add_user(interaction.user)
             await interaction.response.edit_message(embed=self.view.embed, view=self.view)
+
+
+class JoinDialogue(discord.ui.View):
+    def __init__(self, orgview):
+        self.orgview = orgview
+        super().__init__(
+            timeout=120, 
+            disable_on_timeout=True
+            )
+        self.add_item(CharSelect(self.orgview.user_chars))
     
+    @discord.ui.button(
+        label='test',
+        style=discord.ButtonStyle.green
+    )
+    async def bcallback(self, button, interaction):
+        print(self.orgview.user_chars)
+
+        await interaction.response.edit_message(view=self)
     
 
 
@@ -243,8 +263,16 @@ class JoinRaid(discord.ui.View):
         self.user_chars = self.db.select_chars(user)
         #charselect = self.get_item('character')
         #charselect.disabled = False
-        self.add_item(CharSelect(self.user_chars))
+
+        panel = discord.Embed(
+            title='Please choose ur Character and as which Role you want to join the raid.',
+            color=discord.Colour.blue(),
+        )
+
+
+        #self.add_item(CharSelect(self.user_chars))
         await interaction.response.edit_message(view=self)
+        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self), embed=panel)
 
 
 #------------- leave section, embed aktuallisierung macht probleme
