@@ -147,7 +147,7 @@ class CharSelect(discord.ui.Select):
         await interaction.response.edit_message(view=self.view)
 
 
-#TODO edit original response, not new interaction
+
 class DPSButton(discord.ui.Button):
     def __init__(self, selection):
         self.char = selection
@@ -178,7 +178,9 @@ class DPSButton(discord.ui.Button):
             await self.view.orgview.thread.add_user(interaction.user)
             #self.view.remove_item(char_select)
             #self.view.remove_item(self)
-            await interaction.response.edit_message(embed=self.view.orgview.embed, view=self.view.orgview)
+            await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
+            await interaction.response.defer()
+            await interaction.delete_original_response()
 
 class SUPPButton(discord.ui.Button):
     def __init__(self, selection):
