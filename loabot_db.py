@@ -30,6 +30,11 @@ class LBDB:
         self.cur.execute(f'INSERT INTO user(name) VALUES ("{user}")')
         self.con.commit()
     
+    def add_raids(self, name, modes, member, rtype):
+        # modes  must be in format '{"modes":["Normal Mode, 1370","...", ...]}'
+        self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES ("{name}","{modes}","{member}","{rtype}")')
+        self.con.commit()
+    
     def add_chars(self, chars, cl, user):
         self.cur.execute(f'INSERT INTO chars(user_id, char_name, class) VALUES((SELECT id FROM user WHERE name="{user}"), "{chars}", "{cl}")')
         self.con.commit()
