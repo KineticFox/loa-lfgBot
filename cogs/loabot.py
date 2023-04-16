@@ -195,18 +195,20 @@ class SUPPButton(discord.ui.Button):
     
     async def callback(self, interaction: discord.Interaction):
         self.view.supp += 1
-        threadMeembers = await self.thread.fetch_members()
-        char_select = self.char
+        threadMeembers = await self.view.orgview.thread.fetch_members()
+        char_select = self.view.get_item('character_selection')
 
         if any(m.id == interaction.user.id for m in threadMeembers):
             await interaction.response.send_message('you are already in this group', ephemeral=True)
         else:
-            self.view.suppvalue.append(f'{self.char} - {interaction.user.name}\n')
-            n = ''.join(self.view.suppvalue)
-            self.view.embed.set_field_at(4,name='Anzahl SUPP:', value=self.supp)
-            self.view.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-            await self.view.thread.add_user(interaction.user)
-            await interaction.response.edit_message(embed=self.view.embed, view=self.view)
+            self.view.orgview.suppvalue.append(f'{self.char} - {interaction.user.name}\n')
+            n = ''.join(self.view.orgview.suppvalue)
+            self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=self.view.orgview.supp)
+            self.view.orgview.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+            await self.view.orgview.thread.add_user(interaction.user)
+            await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
+            await interaction.response.defer()
+            await interaction.delete_original_response()
 
 
 class JoinDialogue(discord.ui.View):
