@@ -18,7 +18,6 @@ from loabot_db import LBDB
 
 raids = {"Argos":"Argos Abyss Raid, max 8 players", "Valtan":"valtan Legion Raid, max 8 players", "Vykas":"Vykas Legion Raid, max 8 players", "Kakul-Saydon":"Kakul Legion Raid, max 4 players", "Brelshaza Normal":"Brelshaza Legion Raid, max 8 players"}
 modes = {"Argos":["Normal Mode, 1370"], "Valtan":["Normal Mode, 1415", "Hard Mode, 1445"], "Vykas":["Normal Mode, 1430", "Hard Mode, 1460"], "Kakul-Saydon":["Training mode, 1385","Normal Mode, 1475"], "Brelshaza Normal":["Training mode, 1430","Gate 1&2, 1490", "Gate 3&4, 1500", "Gate 5&6, 1520"]}
-chars = ['Artillerist', 'Gunslinger', 'Summoner', 'Berserk', 'Destroyer', 'Paladin', 'Bard', 'Lancemaster', 'Gunlancer', 'Scouter', 'Sorceress']
 
 class LegionRaidCreation(discord.ui.View):
 
