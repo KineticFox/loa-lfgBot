@@ -3,7 +3,8 @@ import sqlite3
 class LBDB:
     def __init__(self) -> None:
         self.con = sqlite3.connect('loabot.db')
-        self.con.row_factory =  lambda cursor, row: row[0]
+        #self.con.row_factory =  lambda cursor, row: row[0]
+        self.con.row_factory = sqlite3.Row
         self.cur = self.con.cursor()
 
     def createTables(self):
@@ -25,6 +26,16 @@ class LBDB:
     def get_chars(self, user):
         res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user where name="{user}")')
         return res.fetchall()
+    
+    def get_raids(self):
+        res = self.cur.execute('Select * FROM raids')
+        return res.fetchall()
+        #raiddata={}
+
+        #for n in r:
+        #    data = self.cur.execute(f'SELECT modes, member, type FROM raids WHERE name="{n}"')
+        #    result = data.fetchall()
+        #    print('inner: ', result)
 
     def add_user(self, user):
         self.cur.execute(f'INSERT INTO user(name) VALUES ("{user}")')
@@ -32,7 +43,8 @@ class LBDB:
     
     def add_raids(self, name, modes, member, rtype):
         # modes  must be in format '{"modes":["Normal Mode, 1370","...", ...]}'
-        self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES ("{name}","{modes}","{member}","{rtype}")')
+        #self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES ("{name}","{modes}","{member}","{rtype}")')
+        self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES (?, ?, ?, ?)', name, modes, member, rtype)
         self.con.commit()
     
     def add_chars(self, chars, cl, user):

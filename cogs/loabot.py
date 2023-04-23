@@ -5,6 +5,7 @@ import dotenv
 from discord.ext import commands
 from discord.commands import SlashCommand
 from loabot_db import LBDB
+import json
 
 
 #bot = discord.Bot()
@@ -25,12 +26,24 @@ class LegionRaidCreation(discord.ui.View):
         super().__init__(timeout=None)
         self.bot = bot
         self.db = db
+        self.raids = {}
+        self.modes = {}
 
     def options():
         list = []
         for raid in raids:
             list.append(discord.SelectOption(label=raid, description=raids[raid]))
         return list
+    
+    def set_Raids(self):
+        result = self.db.get_raids
+        raiddicts = [{k: item[k] for k in item.keys()} for item in result]
+        for r in raiddicts:
+            modes = r.get('modes')
+            modearray = modes.split(',')
+            rdata = {'type':r.get('type'), 'modes':modearray, 'player':r.get('member')}
+            self.raids[r.get('name')] = rdata
+        print(self.raids)
 
     @discord.ui.button(
         label="Cancel",
@@ -384,13 +397,15 @@ class loaLFGBot(commands.Cog):
         await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot, self.db), ephemeral=True)
     
     @discord.slash_command(name="db_adduser", description="adds the user to the DB")
-    async def db_adduser(self, ctx):
-        print(ctx.author.id)     
+    async def db_adduser(self, ctx):    
         self.db.add_user(ctx.author.name)
+        await ctx.respond('added your DC-User to the DB', ephemeral=True, delete_after=20)
     
     @discord.slash_command(name="db_showtable", description="shows alll rows of given table")
     async def db_showtable(self, ctx, table: discord.Option(str, 'name of the table', required=True)):
-        print(self.db.show(table))
+        rows = self.db.show(table)
+        dicts = [{k: item[k] for k in item.keys()} for item in rows]
+        print(dicts)
     
     @discord.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
     async def db_addchars(self, ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True)):
@@ -401,6 +416,25 @@ class loaLFGBot(commands.Cog):
     async def db_getchars(self, ctx):
         res = self.db.get_chars(ctx.author.name)
         await ctx.respond(f'Your chars: {res}', ephemeral=True)
+
+    @discord.slash_command(name="db_addraid", description="Adds a new Raid to lfg selection")
+    async def db_addraid(self,ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', required=True)):
+        #m = json.dumps(modes)
+        #print(m)
+        self.db.add_raids(name,modes,member,raidtype)
+        await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
+    
+    @discord.slash_command(name="db_testraid")
+    async def db_testraid(self, ctx):
+        rr = {}
+        result = self.db.get_raids()
+        raiddicts = [{k: item[k] for k in item.keys()} for item in result]
+        for r in raiddicts:
+            modes = r.get('modes')
+            modearray = modes.split(',')
+            rdata = {'type':r.get('type'), 'modes':modearray, 'player':r.get('member')}
+            rr[r.get('name')] = rdata
+        print(rr)
     
     
 
