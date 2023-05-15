@@ -268,7 +268,12 @@ class JoinRaid(discord.ui.View):
 
     async def join_callback(self, button, interaction):
         user = interaction.user.name
-        self.user_chars = self.db.select_chars(user)
+        result = self.db.select_chars(user)
+        temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
+        for d in temp_char_list:
+            self.user_chars.append(d.get('char_name'))
+        print('CHARS', self.user_chars)
+
         #charselect = self.get_item('character')
         #charselect.disabled = False
 
