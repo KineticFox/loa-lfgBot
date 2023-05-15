@@ -22,13 +22,16 @@ raids = {}
 
 class LegionRaidCreation(discord.ui.View):
 
-    def __init__(self, bot, db, raids):
+    def __init__(self, bot, db, raids, embed):
         super().__init__(timeout=None)
         self.bot = bot
         self.db = db
         self.raids = raids
         self.modes = {}
+        self.embed = embed
+        self.selectedRaid = {}
         self.add_item(RaidSelect(self))
+        #self.add_item(RaidModeSelect(self))
         
 
     #def options():
@@ -65,74 +68,7 @@ class LegionRaidCreation(discord.ui.View):
         #await interaction.message.delete()
         await interaction.response.defer()
         await interaction.delete_original_response()
-        
-
-     
-    #@discord.ui.select(
-    #    placeholder = "Choose a Raid!", 
-    #    min_values = 1, 
-    #    max_values = 1,
-    #    custom_id='raid', 
-    #    options = options()
-    #)    
-    #async def selectRaid_callback(self, select, interaction):
-    #    embed = interaction.message.embeds[0]
-    #    embed.add_field(name=f'Raid: ', value=select.values[0], inline=True)
-    #    select.placeholder = select.values[0]
-    #    select.disabled = True
-    #    mode = self.get_item('mode')
-    #    mode.disabled = False
-
-    #    modes = select.value[0].get('modes')
-    #    for mode in modes:
-    #        print('mode loop', mode)
-    #        select.append_option(discord.SelectOption(label=mode))
-        
-        #if select.values[0] == "Argos":
-        #    o1 = modes["Argos"]
-        #    mode.append_option(discord.SelectOption(label=o1[0]))
-        #elif select.values[0] == "Valtan":
-        #    o1 = modes["Valtan"]
-        #    mode.append_option(discord.SelectOption(label=o1[0]))
-        #    mode.append_option(discord.SelectOption(label=o1[1]))
-        #elif select.values[0] == "Vykas":
-        #    o1 = modes["Vykas"]
-        #    mode.append_option(discord.SelectOption(label=o1[0]))
-        #    mode.append_option(discord.SelectOption(label=o1[1]))
-        #elif select.values[0] == "Kakul-Saydon":
-        #    o1 = modes["Kakul-Saydon"]
-        #    mode.append_option(discord.SelectOption(label=o1[0]))
-        #    mode.append_option(discord.SelectOption(label=o1[1]))
-        #elif select.values[0] == "Brelshaza Normal":
-        #    o1 = modes["Brelshaza Normal"]
-        #    mode.append_option(discord.SelectOption(label=o1[0]))
-        #    mode.append_option(discord.SelectOption(label=o1[1]))
-        #    mode.append_option(discord.SelectOption(label=o1[2]))
-        #    mode.append_option(discord.SelectOption(label=o1[3]))
-        #await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.select(
-        placeholder = "Choose a Mode!", 
-        min_values = 1, 
-        max_values = 1,
-        disabled=True,
-        custom_id='mode', 
-        options = [
-            discord.SelectOption(
-                label="None",
-                description="no selection made"
-            ), 
-        ]
-    )    
-    async def selectMode_callback(self, select, interaction):
-        embed = interaction.message.embeds[0]
-        embed.add_field(name=f'Raid Mode: ', value=select.values[0], inline=True)
-        select.placeholder = select.values[0]
-        createButton  = self.get_item('create')
-        createButton.disabled = False
-        select.disabled = True
-        await interaction.response.edit_message(embed=embed, view=self)
-        
+       
 
     @discord.ui.button(
         label="Create Raid",
@@ -185,16 +121,34 @@ class RaidSelect(discord.ui.Select):
 
         super().__init__(custom_id='raid_selection', placeholder='Choose a Raid', min_values=1, max_values=1, options=set_options(), disabled=False)
     
-    async def selectRaid_callback(self, interaction: discord.Interaction):
-        embed = self.parentview.interaction.message.embeds[0]
-        embed.add_field(name=f'Raid: ', value=self.values[0], inline=True)
+    async def callback(self, interaction: discord.Interaction):
+        self.parentview.embed.add_field(name=f'Raid: ', value=self.values[0], inline=True)
         self.placeholder = self.values[0]
+        self.parentview.selectedRaid = self.parentview.raids[self.values[0]]
         self.disabled = True
-        #mode = self.get_item('mode')
-        #mode.disabled = False
+        self.parentview.add_item(RaidModeSelect(parentview=self.parentview, mode=self.parentview.raids[self.values[0]]))
+        await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
 
 class RaidModeSelect(discord.ui.Select):
-    #TODO add raid mode select view subclass
+    def __init__(self, parentview, mode) -> None:
+        self.parentview = parentview
+        self.mode = mode
+        def set_options():
+            list = []
+            list.append(discord.SelectOption(label='test', description='test desc'))
+            for m in self.mode.get('modes'):
+                list.append(discord.SelectOption(label=m))
+            return list
+        
+        super().__init__(custom_id='raid_mode', placeholder='Choose the mode of the raid', min_values=1, max_values=1, options=set_options(), disabled=False)
+    
+    async def callback(self, interaction: discord.Interaction):
+        self.parentview.embed.add_field(name=f'Raid Mode: ', value=self.values[0], inline=True)
+        self.placeholder = self.values[0]
+        createButton  = self.parentview.get_item('create')
+        createButton.disabled = False
+        self.disabled = True
+        await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
 
 
 
@@ -445,7 +399,7 @@ class loaLFGBot(commands.Cog):
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=ctx.author)
 
-        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot, self.db, self.raids), ephemeral=True)
+        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot, self.db, self.raids, embed=panel), ephemeral=True)
     
     @discord.slash_command(name="db_adduser", description="adds the user to the DB")
     async def db_adduser(self, ctx):    
