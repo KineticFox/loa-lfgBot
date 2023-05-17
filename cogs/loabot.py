@@ -84,8 +84,15 @@ class LegionRaidCreation(discord.ui.View):
         raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
         #await raidThread.add_user(interaction.user)
         #await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
-        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread, self.db))
 
+        edict = embed.to_dict()
+        fields = edict.get('fields')
+        print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
+        #print(edict)
+        #edict.get('title'), edict.get('fields) f[0].get('value')=date f[1].get('value')=Raid f[2].get('value')=Raid mode
+
+        self.db.store_raids(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'))
+        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread, self.db))
         await interaction.response.defer()
         await interaction.delete_original_response()
 
@@ -272,7 +279,6 @@ class JoinRaid(discord.ui.View):
         temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
         for d in temp_char_list:
             self.user_chars.append(d.get('char_name'))
-        print('CHARS', self.user_chars)
 
         #charselect = self.get_item('character')
         #charselect.disabled = False

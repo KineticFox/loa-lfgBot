@@ -50,6 +50,10 @@ class LBDB:
         self.cur.execute(f'INSERT INTO chars(user_id, char_name, class) VALUES((SELECT id FROM user WHERE name="{user}"), "{chars}", "{cl}")')
         self.con.commit()
 
+    def store_raids(self, title, raid, raid_mode, date, mc=None,):
+        self.cur.execute(f'INSERT INTO groups(raid_title, raid, raid_mode, raid_mc, date) VALUES(?, ?, ?, ?, ?)', [title, raid, raid_mode, mc, date])
+        self.con.commit()
+
 
     def show(self, table):
         res = self.cur.execute(f'SELECT * FROM {table}')
