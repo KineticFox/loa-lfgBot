@@ -1,21 +1,22 @@
-import asyncio
 import os
 import discord
-from discord.ui.item import Item
-import dotenv
 from discord.ext import commands
-from discord.commands import SlashCommand
+import dotenv
 from loabot_db import LBDB
-from main import logger
+import random
 
-#bot = discord.Bot()
+import logging
 
 
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+formater = logging.Formatter('%(name)s:%(levelname)s: %(msg)s')
+handler.setFormatter(formater)
+logger.addHandler(handler)
+logger.propagate = False
 
-    #async def on_timeout(self):
-    #    for child in self.children:
-    #        child.disabled = True
-    #    await self.message.edit(content="Took to long", view=self)
+#----------------------------------------------------------------------------------------------------------------------------#
 raids = {}
 #raids = {"Argos":"Argos Abyss Raid, max 8 players", "Valtan":"valtan Legion Raid, max 8 players", "Vykas":"Vykas Legion Raid, max 8 players", "Kakul-Saydon":"Kakul Legion Raid, max 4 players", "Brelshaza Normal":"Brelshaza Legion Raid, max 8 players"}
 #modes = {"Argos":["Normal Mode, 1370"], "Valtan":["Normal Mode, 1415", "Hard Mode, 1445"], "Vykas":["Normal Mode, 1430", "Hard Mode, 1460"], "Kakul-Saydon":["Training mode, 1385","Normal Mode, 1475"], "Brelshaza Normal":["Training mode, 1430","Gate 1&2, 1490", "Gate 3&4, 1500", "Gate 5&6, 1520"]}
@@ -92,7 +93,7 @@ class LegionRaidCreation(discord.ui.View):
         #edict.get('title'), edict.get('fields) f[0].get('value')=date f[1].get('value')=Raid f[2].get('value')=Raid mode
 
         self.db.store_raids(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'))
-        logger.info(f"Created Raid {edict.get('title')}")
+        logger.info(f"Created Raid: {edict.get('title')}")
         await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread, self.db))
         await interaction.response.defer()
         await interaction.delete_original_response()
@@ -262,7 +263,6 @@ class JoinRaid(discord.ui.View):
     @discord.ui.button(
         label='join Raid',
         style=discord.ButtonStyle.green,
-
     )
 
     async def join_callback(self, button, interaction):
@@ -272,14 +272,10 @@ class JoinRaid(discord.ui.View):
         for d in temp_char_list:
             self.user_chars.append(d.get('char_name'))
 
-        #charselect = self.get_item('character')
-        #charselect.disabled = False
-
         panel = discord.Embed(
             title='Please choose ur Character and as which Role you want to join the raid.',
             color=discord.Colour.blue(),
         )
-
 
         #self.add_item(CharSelect(self.user_chars))
         await interaction.response.edit_message(view=self)
@@ -367,7 +363,9 @@ class JoinRaid(discord.ui.View):
 # --> work with embed.to_dict / embed.from_dict
 
 class TestView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, bot, db):
+        self.bot = bot
+        self.db = db
         super().__init__(timeout=None)
     
     @discord.ui.button(
@@ -375,37 +373,94 @@ class TestView(discord.ui.View):
         style=discord.ButtonStyle.red,
         custom_id='tester'
     )
+        
     async def button_callback(self, button, interaction):
-        await interaction.response.send_message(f'Hello {interaction.user}')
 
+        title = random.randint(1,100)
+        panel = discord.Embed(
+            title=title,
+            color=discord.Colour.blue(),
+        )
+        panel.set_author(name=interaction.user)
 
+        chanell = self.bot.get_channel(interaction.channel_id)
+        msg = await chanell.send('A Test spawns, come and join', embed=panel ,view=TestFollow(panel))
+        self.db.add_message(msg.id, chanell.id)
+        await interaction.response.send_message("started", delete_after=10)
 
-class loaLFGBot(commands.Cog):
-
-    def __init__(self,bot, db):
-        self.bot = bot
-        self.db = db
-        self.raids = {}
-        self.set_Raids()
-        #self.bot.add_view(JoinRaid())
-
+class TestFollow(discord.ui.View):
+    def __init__(self, embed):
+        self.embed = embed
+        super().__init__(timeout=None)
     
-    def set_Raids(self):
-        result = self.db.get_raids()
+    @discord.ui.button(
+        label='Testing follow',
+        style=discord.ButtonStyle.blurple,
+        custom_id='tester1'
+    )
+
+    async def button_callback(self, button, interaction):
+        msg = await interaction.response.send_message(f'Hello {interaction.user}, this is a follow test for {self.embed.title}')
+
+
+
+#----------------------------------------------------------------------------------------------------------------------------#
+
+def set_Raids(db):
+        result = db.get_raids()
         raiddicts = [{k: item[k] for k in item.keys()} for item in result]
         for r in raiddicts:
             modes = r.get('modes')
             modearray = modes.split(',')
             rdata = {'type':r.get('type'), 'modes':modearray, 'player':r.get('member')}
-            self.raids[r.get('name')] = rdata
-        print('raids dict', self.raids)
+            raids[r.get('name')] = rdata
+        print('raids dict', raids)
+        logger.info('Raids are set')
 
-    @discord.slash_command(name = "hi", description = "say hi")
-    async def hello(self, ctx):
+async def persistent_setup(db, bot):
+    result = db.get_messages()
+    m_ids = [{k: item[k] for k in item.keys()} for item in result]
+    logger.debug(f'Message IDs: {m_ids}')
+    
+    for id in m_ids:
+        m_id = id.get('m_id')
+        c_id = id.get('c_id')
+        chanell = bot.get_channel(c_id)
+        msg = await chanell.fetch_message(m_id)
+        #logger.debug(f'Dict mid:   {m_id}')
+        #msg = bot.get_message(m_id)
+        logger.debug(f'Retrived msg object: {msg}')
+        bot.add_view(view=TestFollow(msg.embeds[0]), message_id=msg.id)
+    logger.info('Add all persistent views')
+
+
+def run():
+
+    dotenv.load_dotenv()
+    token = str(os.getenv("TOKEN"))
+    intents = discord.Intents.all()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix='!', intents=intents)
+    db = LBDB()
+    
+    #bot.get_message(id)
+    
+    @bot.event
+    async def on_ready():
+        logger.info(f"We have logged in as {bot.user}")
+        db.setup()
+        set_Raids(db)
+        bot.add_view(TestView(bot, db))
+        await persistent_setup(db, bot)
+        logger.info('Setup in general done')
+
+    
+    @bot.slash_command(name = "hi", description = "say hi")
+    async def hello(ctx):
         await ctx.respond(f"hello {ctx.user}")
 
-    @discord.slash_command(name="lfg", description="creates a raid")
-    async def create_raid(self,ctx, title: discord.Option(str, 'Choose a title'), date: discord.Option(str, 'When?', required=True)):
+    @bot.slash_command(name="lfg", description="creates a raid")
+    async def create_raid(ctx, title: discord.Option(str, 'Choose a title'), date: discord.Option(str, 'When?', required=True)):
         time = date
 
         panel = discord.Embed(
@@ -415,41 +470,41 @@ class loaLFGBot(commands.Cog):
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=ctx.author)
 
-        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(self.bot, self.db, self.raids, embed=panel), ephemeral=True)
+        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(bot, db, raids, embed=panel), ephemeral=True)
     
-    @discord.slash_command(name="db_adduser", description="adds the user to the DB")
-    async def db_adduser(self, ctx):    
-        self.db.add_user(ctx.author.name)
+    @bot.slash_command(name="db_adduser", description="adds the user to the DB")
+    async def db_adduser(ctx):    
+        db.add_user(ctx.author.name)
         await ctx.respond('added your DC-User to the DB', ephemeral=True, delete_after=20)
     
-    @discord.slash_command(name="db_showtable", description="shows alll rows of given table")
-    async def db_showtable(self, ctx, table: discord.Option(str, 'name of the table', required=True)):
-        rows = self.db.show(table)
+    @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
+    async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
+        rows = db.show(table)
         dicts = [{k: item[k] for k in item.keys()} for item in rows]
         print(dicts)
         await ctx.respond(f'your table view {dicts}', delete_after=30)
     
-    @discord.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
-    async def db_addchars(self, ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True)):
-        self.db.add_chars(char, cl, ctx.author.name)
+    @bot.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
+    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True)):
+        db.add_chars(char, cl, ctx.author.name)
         await ctx.respond('added your char to the DB', ephemeral=True, delete_after=20)
     
-    @discord.slash_command(name="db_getchars", description="shows all chars of the user")
-    async def db_getchars(self, ctx):
-        res = self.db.get_chars(ctx.author.name)
+    @bot.slash_command(name="db_getchars", description="shows all chars of the user")
+    async def db_getchars(ctx):
+        res = db.get_chars(ctx.author.name)
         await ctx.respond(f'Your chars: {res}', ephemeral=True)
 
-    @discord.slash_command(name="db_addraid", description="Adds a new Raid to lfg selection")
-    async def db_addraid(self,ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', required=True)):
+    @bot.slash_command(name="db_addraid", description="Adds a new Raid to lfg selection")
+    async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', required=True)):
         #m = json.dumps(modes)
         #print(m)
-        self.db.add_raids(name,modes,member,raidtype)
+        db.add_raids(name,modes,member,raidtype)
         await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
     
-    @discord.slash_command(name="db_testraid")
-    async def db_testraid(self, ctx):
+    @bot.slash_command(name="db_testraid")
+    async def db_testraid(ctx):
         rr = {}
-        result = self.db.get_raids()
+        result = db.get_raids()
         raiddicts = [{k: item[k] for k in item.keys()} for item in result]
         for r in raiddicts:
             modes = r.get('modes')
@@ -459,23 +514,14 @@ class loaLFGBot(commands.Cog):
         #print(rr)
         await ctx.respond(f'loaded all raids ', ephemeral=True, delete_after=20)
     
-    @discord.slash_command(name="testing")
-    async def testing(self, ctx):
-        await ctx.respond('lets go', view=TestView(self.bot))
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        logger.info('loabot cog ready')
-        #self.set_Raids()
-        self.bot.add_view(TestView())
-
+    @bot.slash_command(name="testing")
+    async def testing(ctx):
+        await ctx.respond('lets go', view=TestView(bot, db))
+    
+   
 
     
+    bot.run(token)
 
-def setup(bot):
-    db = LBDB()
-    db.setup()
-    bot.add_cog(loaLFGBot(bot, db))
-
-
-#bot.run(token)
+if __name__=="__main__":
+    run()
