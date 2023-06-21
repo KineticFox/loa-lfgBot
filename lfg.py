@@ -264,7 +264,7 @@ class RaidSelect(discord.ui.Select):
         self.parentview = parentview
         def set_options():
             list = []
-            print('legin creation ',self.parentview.raids['Valtan'])
+            #print('legin creation ',self.parentview.raids['Valtan'])
             for key, value in self.parentview.raids.items():
                 list.append(discord.SelectOption(label=key, description=value.get('type')))
             return list
@@ -285,7 +285,7 @@ class RaidModeSelect(discord.ui.Select):
         self.mode = mode
         def set_options():
             list = []
-            list.append(discord.SelectOption(label='test', description='test desc'))
+            list.append(discord.SelectOption(label='Static', description='For groups with no spcifig raid type (e.g static groups)'))
             for m in self.mode.get('modes'):
                 list.append(discord.SelectOption(label=m))
             return list
