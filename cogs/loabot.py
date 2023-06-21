@@ -299,8 +299,11 @@ class JoinRaid(discord.ui.View):
 #        {'name': '\xad', 'value': '\xad', 'inline': True}, 
 #        {'name': 'DPS', 'value': 'Destroyer - MrXilef#8048\n', 'inline': True}, 
 #        {'name': 'SUPP', 'value': '\xad', 'inline': True}
+#        {'name': ID, 'value':xx}
 #    ], 
-#    'color': 3447003, 'type': 'rich', 'title': 'test'
+#    'color': 3447003, 
+#    'type': 'rich', 
+#    'title': 'test'
 #}
 
 

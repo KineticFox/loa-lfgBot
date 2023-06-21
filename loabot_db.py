@@ -22,7 +22,7 @@ class LBDB:
             self.cur.execute("CREATE TABLE user(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)")
             self.cur.execute("CREATE TABLE chars(user_id INTEGER NOT NULL, char_name STRING PRIMARY KEY, class TEXT NOT NULL, FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE ON UPDATE NO ACTION)")
             self.cur.execute("CREATE TABLE groups(id INTEGER PRIMARY KEY AUTOINCREMENT, raid_title TEXT NOT NULL, raid TEXT NOT NULL,raid_mode TEXT NOT NULL, raid_mc INTEGER, date TEXT)")
-            self.cur.execute("CREATE TABLE raidmember(raid_id INTEGER NOT NULL, user_id INTEGER NOT NULL, char_name TEXT NOT NULL, FOREIGN KEY (raid_id) REFERENCES groups (id), FOREIGN KEY (user_id) REFERENCES user (id), FOREIGN KEY (char_name) REFERENCES chars (char_name))")
+            self.cur.execute("CREATE TABLE raidmember(raid_id INTEGER NOT NULL, user_id INTEGER NOT NULL, char_name TEXT NOT NULL, FOREIGN KEY (raid_id) REFERENCES groups (id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE, FOREIGN KEY (char_name) REFERENCES chars (char_name))")
             self.cur.execute("CREATE TABLE raids(name TEXT NOT NULL, modes TEXT NOT NULL, member INT NOT NULL, type TEXT NOT NULL)")
             self.cur.execute("CREATE TABLE messages(m_id INT NOT NULL, c_id INT NOT NULL)")
             self.con.commit()
@@ -102,8 +102,16 @@ class LBDB:
         try:
             self.cur.execute(f'INSERT INTO groups(raid_title, raid, raid_mode, raid_mc, date) VALUES(?, ?, ?, ?, ?)', [title, raid, raid_mode, mc, date])
             self.con.commit()
+            return self.cur.lastrowid
         except sqlite3.Error as e:
-            logger.warning(f'Add user insertion error: {e}')
+            logger.warning(f'Store raid insertion error: {e}')
+    
+    def delete_raids(self, id):
+        try:
+            self.cur.execute(f'DELETE FROM groups WHERE id={id}')
+            self.con.commit()
+        except sqlite3.Error as e:
+            logger.warning(f'Delete Raid error: {e}')
 
 
     def show(self, table):

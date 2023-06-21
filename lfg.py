@@ -23,16 +23,15 @@ raids = {}
 
 class LegionRaidCreation(discord.ui.View):
 
-    def __init__(self, bot, db, raids, embed):
+    def __init__(self,db, raids, embed):
         super().__init__(timeout=None)
-        self.bot = bot
         self.db = db
         self.raids = raids
         self.modes = {}
-        self.embed = embed
         self.selectedRaid = {}
         self.add_item(RaidSelect(self))
-        #self.add_item(RaidModeSelect(self))
+        self.embed = embed
+        self.thread = None
         
 
     #def options():
@@ -41,16 +40,6 @@ class LegionRaidCreation(discord.ui.View):
     #    for raid in raids:
     #        list.append(discord.SelectOption(label=raid, description=raids[raid].get('type')))
     #    return list
-    
-    def set_Raids(self):
-        result = self.db.get_raids
-        raiddicts = [{k: item[k] for k in item.keys()} for item in result]
-        for r in raiddicts:
-            modes = r.get('modes')
-            modearray = modes.split(',')
-            rdata = {'type':r.get('type'), 'modes':modearray, 'player':r.get('member')}
-            self.raids[r.get('name')] = rdata
-        print(self.raids)
 
     def set_modes(self, select, value):
         modes = value.get('modes')
@@ -80,25 +69,176 @@ class LegionRaidCreation(discord.ui.View):
     )
     async def button_callback(self, button, interaction):
         embed = interaction.message.embeds[0]
-        chanell = self.bot.get_channel(interaction.channel_id)
-        #print(interaction.user.id)
-        raidThread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        #await raidThread.add_user(interaction.user)
-        #await interaction.channel.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread))
+        chanell = interaction.guild.get_channel(interaction.channel.id)
+        self.thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
 
         edict = embed.to_dict()
         fields = edict.get('fields')
         print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
-        #print(edict)
-        #edict.get('title'), edict.get('fields) f[0].get('value')=date f[1].get('value')=Raid f[2].get('value')=Raid mode
 
-        self.db.store_raids(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'))
+
+        riad_id = self.db.store_raids(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'))
+        #edict['title'] = f'{edict.get("title")} '
         logger.info(f"Created Raid: {edict.get('title')}")
-        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(embed, chanell, raidThread, self.db))
+        embed.add_field(name='Anzahl DPS: ', value=0)
+        embed.add_field(name='Anzahl SUPP: ', value=0)
+        embed.add_field(name=chr(173), value=chr(173))
+        embed.add_field(name='DPS', value=chr(173))
+        embed.add_field(name='SUPP', value=chr(173))
+        embed.add_field(name='ID', value=riad_id)
+        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db))
         await interaction.response.defer()
         await interaction.delete_original_response()
 
+#TODO joinen funktioniert, leaven hingegn hat manchmal anomalien und löscht falschen benutzer
+# have to supbcalss selects for better usability and get acces to user interacting 
+# that might help: https://stackoverflow.com/questions/75575015/discord-py-multiple-select-menu-interactions-get-mixed-up
+class JoinRaid(discord.ui.View):
+
+    def __init__(self, db):
+        super().__init__(timeout=None)
+        
+        self.dps = 0
+        self.supp = 0
+        self.selectedChar = ''
+        self.dpsvalue = []
+        self.suppvalue= []
+        self.disabled = True
+        self.db = db
+        self.user_chars = [] #clear list after join
+        self.parentview = self
+        self.thread = None
+        self.embed = None
+
+    @discord.ui.button(
+        label='join Raid',
+        style=discord.ButtonStyle.green,
+        custom_id= 'join_button'
+    )
+
+    async def join_callback(self, button, interaction):
+        user = interaction.user.name
+        result = self.db.select_chars(user)
+        self.embed = interaction.message.embeds[0]
+        thread_id = None
+        thread = None
+        temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
+        for d in temp_char_list:
+            self.user_chars.append(d.get('char_name'))
+
+        panel = discord.Embed(
+            title='Please choose your Character and as which Role you want to join the raid.',
+            color=discord.Colour.blue(),
+        )
+
+        #self.add_item(CharSelect(self.user_chars))
+        chanell = interaction.guild.get_channel(interaction.channel.id)
+        allThreads = chanell.threads
+        for t in allThreads:
+            if t.name == self.embed.title:
+                thread_id = t.id
+        thread = chanell.get_thread(thread_id)
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self), embed=panel)
+
+  
+    @discord.ui.button(
+        label='leave',
+        style=discord.ButtonStyle.red,
+        custom_id='leave_thread'
+    )
+
+
+    async def leave_callback(self, button, interaction):
+        thread_id = None
+        thread = None
+        embed = interaction.message.embeds[0]
+        count = len(self.suppvalue) + len(self.dpsvalue)
+
+        chanell = interaction.guild.get_channel(interaction.channel.id)
+        allThreads = chanell.threads
+        for t in allThreads:
+            if t.name == embed.title:
+                thread_id = t.id
+
+        thread = chanell.get_thread(thread_id)
+        threadMeembers = await thread.fetch_members()
+
+        if count <= 1:
+            await interaction.response.send_message('you can not leave, try to delete the group instead', ephemeral=True)
+        else:
+
+            if any(m.id == interaction.user.id for m in threadMeembers):                
+                    for dps in self.dpsvalue:
+                        if str(interaction.user) in dps:
+                            self.dps -=1
+                            self.dpsvalue.remove(dps)
+                            if len(self.dpsvalue) < 1:
+                                self.embed.set_field_at(6, name='DPS', value=chr(173))
+                            else:
+                                n = ''.join(self.dpsvalue)
+                                self.embed.set_field_at(3,name='DPS:', value=self.dps)
+                                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+                            break
+                    
+                    
+                    for supp in self.suppvalue:
+                        if str(interaction.user) in supp:
+                            self.supp -=1
+                            self.suppvalue.remove(supp)
+                            if len(self.suppvalue) < 1:
+                                self.embed.set_field_at(6, name='SUPP', value=chr(173))
+                            else:
+                                n = ''.join(self.suppvalue)
+                                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
+                                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+                            break
+
+
+            await interaction.response.edit_message(embed=self.embed, view=self)
+            await self.thread.remove_user(interaction.user)
+                    
+    @discord.ui.button(
+        label='delete',
+        style=discord.ButtonStyle.red,
+        custom_id='delete_thread'
+    )
+
+    async def delete_callback(self, button, interaction):
+        embed = interaction.message.embeds[0]
+        author = embed.author.name
+        embed_dict = embed.to_dict()
+
+        fields = embed_dict.get('fields')
+
+        thread_id = None
+        thread = None
+
+        chanell = interaction.guild.get_channel(interaction.channel.id)
+        allThreads = chanell.threads
+        for t in allThreads:
+            if t.name == embed.title:
+                thread_id = t.id
+
+        thread = chanell.get_thread(thread_id)
+
+        if str(interaction.user) == author:
+            self.db.delete_raids(fields[8].get('value'))
+            await thread.delete()
+            await interaction.response.defer()
+            await interaction.message.delete()
+
 #--------------------- Subclassed view elements -----------------------------------#
+
+class JoinDialogue(discord.ui.View):
+    def __init__(self, orgview):
+        self.orgview = orgview
+        self.user_chars = self.orgview.user_chars
+        super().__init__(
+            timeout=120, 
+            disable_on_timeout=True
+            )
+        self.add_item(CharSelect(self.user_chars))
 
 class CharSelect(discord.ui.Select):
     def __init__(self, optionlist) -> None:
@@ -207,7 +347,6 @@ class SUPPButton(discord.ui.Button):
             )
     
     async def callback(self, interaction: discord.Interaction):
-        self.view.supp += 1
         threadMeembers = await self.view.orgview.thread.fetch_members()
         char_select = self.view.get_item('character_selection')
 
@@ -224,62 +363,11 @@ class SUPPButton(discord.ui.Button):
             await interaction.delete_original_response()
 
 
-class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview):
-        self.orgview = orgview
-        super().__init__(
-            timeout=120, 
-            disable_on_timeout=True
-            )
-        self.add_item(CharSelect(self.orgview.user_chars))
 
 
 
-#TODO joinen funktioniert, leaven hingegn hat manchmal anomalien und löscht falschen benutzer
-# have to supbcalss selects for better usability and get acces to user interacting 
-# that might help: https://stackoverflow.com/questions/75575015/discord-py-multiple-select-menu-interactions-get-mixed-up
-class JoinRaid(discord.ui.View):
 
-    def __init__(self, embed, channelID, thread, db):
-        super().__init__(timeout=None)
-        
-        self.embed = embed
-        self.channelID = channelID
-        self.thread = thread
-        self.dps = 0
-        self.supp = 0
-        self.embed.add_field(name='Anzahl DPS: ', value=self.dps)
-        self.embed.add_field(name='Anzahl SUPP: ', value=self.dps)
-        self.embed.add_field(name=chr(173), value=chr(173))
-        self.embed.add_field(name='DPS', value=chr(173))
-        self.embed.add_field(name='SUPP', value=chr(173))
-        self.selectedChar = ''
-        self.dpsvalue = []
-        self.suppvalue= []
-        self.disabled = True
-        self.db = db
-        self.user_chars = []
 
-    @discord.ui.button(
-        label='join Raid',
-        style=discord.ButtonStyle.green,
-    )
-
-    async def join_callback(self, button, interaction):
-        user = interaction.user.name
-        result = self.db.select_chars(user)
-        temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
-        for d in temp_char_list:
-            self.user_chars.append(d.get('char_name'))
-
-        panel = discord.Embed(
-            title='Please choose ur Character and as which Role you want to join the raid.',
-            color=discord.Colour.blue(),
-        )
-
-        #self.add_item(CharSelect(self.user_chars))
-        await interaction.response.edit_message(view=self)
-        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self), embed=panel)
 
 
 #------------- leave section, embed aktuallisierung macht probleme
@@ -363,8 +451,8 @@ class JoinRaid(discord.ui.View):
 # --> work with embed.to_dict / embed.from_dict
 
 class TestView(discord.ui.View):
-    def __init__(self, bot, db):
-        self.bot = bot
+    def __init__(self,db):
+        #self.bot = bot
         self.db = db
         super().__init__(timeout=None)
     
@@ -383,14 +471,15 @@ class TestView(discord.ui.View):
         )
         panel.set_author(name=interaction.user)
 
-        chanell = self.bot.get_channel(interaction.channel_id)
-        msg = await chanell.send('A Test spawns, come and join', embed=panel ,view=TestFollow(panel))
+        #chanell = self.bot.get_channel(interaction.channel_id)
+        chanell = interaction.guild.get_channel(interaction.channel.id)
+        msg = await chanell.send('A Test spawns, come and join', embed=panel ,view=TestFollow())
         self.db.add_message(msg.id, chanell.id)
         await interaction.response.send_message("started", delete_after=10)
 
 class TestFollow(discord.ui.View):
-    def __init__(self, embed):
-        self.embed = embed
+    def __init__(self):
+        #self.embed = embed
         super().__init__(timeout=None)
     
     @discord.ui.button(
@@ -400,7 +489,7 @@ class TestFollow(discord.ui.View):
     )
 
     async def button_callback(self, button, interaction):
-        msg = await interaction.response.send_message(f'Hello {interaction.user}, this is a follow test for {self.embed.title}')
+        msg = await interaction.response.send_message(f'Hello {interaction.user}, this is a follow test for {interaction.message.embeds[0].title}')
 
 
 
@@ -430,7 +519,7 @@ async def persistent_setup(db, bot):
         #logger.debug(f'Dict mid:   {m_id}')
         #msg = bot.get_message(m_id)
         logger.debug(f'Retrived msg object: {msg}')
-        bot.add_view(view=TestFollow(msg.embeds[0]), message_id=msg.id)
+        #bot.add_view(view=TestFollow(msg.embeds[0]))#, message_id=msg.id)
     logger.info('Add all persistent views')
 
 
@@ -450,8 +539,10 @@ def run():
         logger.info(f"We have logged in as {bot.user}")
         db.setup()
         set_Raids(db)
-        bot.add_view(TestView(bot, db))
-        await persistent_setup(db, bot)
+        bot.add_view(TestView(db))
+        bot.add_view(TestFollow())
+        bot.add_view(JoinRaid(db))
+        #await persistent_setup(db, bot)
         logger.info('Setup in general done')
 
     
@@ -470,7 +561,7 @@ def run():
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=ctx.author)
 
-        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(bot, db, raids, embed=panel), ephemeral=True)
+        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
     
     @bot.slash_command(name="db_adduser", description="adds the user to the DB")
     async def db_adduser(ctx):    
@@ -516,7 +607,7 @@ def run():
     
     @bot.slash_command(name="testing")
     async def testing(ctx):
-        await ctx.respond('lets go', view=TestView(bot, db))
+        await ctx.respond('lets go', view=TestView(db))
     
    
 
