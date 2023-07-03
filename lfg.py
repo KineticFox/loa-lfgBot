@@ -105,10 +105,11 @@ class JoinRaid(discord.ui.View):
         self.suppvalue= []
         self.disabled = True
         self.db = db
-        self.user_chars = [] #clear list after join
+        self.user_chars = [] #TODO: clear list after join [x]
         self.parentview = self
         self.thread = None
         self.embed = None
+        self.group_id = None
 
     @discord.ui.button(
         label='join Raid',
@@ -120,6 +121,9 @@ class JoinRaid(discord.ui.View):
         user = interaction.user.name
         result = self.db.select_chars(user)
         self.embed = interaction.message.embeds[0]
+        edict = self.embed.to_dict()
+        fields = edict.get('fields')
+        self.group_id = field[5].get('value') #groupd tabel id
         thread_id = None
         thread = None
         temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
@@ -140,6 +144,7 @@ class JoinRaid(discord.ui.View):
         thread = chanell.get_thread(thread_id)
         await interaction.response.edit_message(view=self)
         await interaction.followup.send(ephemeral=True, view=JoinDialogue(self), embed=panel)
+        self.user_chars.clear() #propably clears list needs to be tested
 
   
     @discord.ui.button(
@@ -231,9 +236,10 @@ class JoinRaid(discord.ui.View):
 #--------------------- Subclassed view elements -----------------------------------#
 
 class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview):
+    def __init__(self, orgview, group_id):
         self.orgview = orgview
         self.user_chars = self.orgview.user_chars
+        self.id = group_id
         super().__init__(
             timeout=120, 
             disable_on_timeout=True
@@ -256,7 +262,6 @@ class CharSelect(discord.ui.Select):
         self.placeholder = self.values[0]
         self.view.add_item(DPSButton(selectedChar))
         self.view.add_item(SUPPButton(selectedChar))           
-
         await interaction.response.edit_message(view=self.view)
 
 class RaidSelect(discord.ui.Select):
@@ -316,7 +321,7 @@ class DPSButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         threadMeembers = await self.view.orgview.thread.fetch_members()
         char_select = self.view.get_item('character_selection')
-
+        #TODO: access view.orgview and get group id
         if any(m.id == interaction.user.id for m in threadMeembers):
             await interaction.response.send_message('you are already in this group', ephemeral=True)
         else:
@@ -329,6 +334,7 @@ class DPSButton(discord.ui.Button):
             #supp_button.disabled = True
             #testdict = self.embed.to_dict()
             #print('test dict: ', testdict)
+            self.view.orgview.user_chars.clear() #clear list
             await self.view.orgview.thread.add_user(interaction.user)
             #self.view.remove_item(char_select)
             #self.view.remove_item(self)

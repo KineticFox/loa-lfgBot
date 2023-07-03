@@ -43,6 +43,21 @@ class LBDB:
             logger.warning(f'Database Error - {e}')
             return ['error']
 
+    def get_group(self, id):
+        try:
+            res = self.cur.execute(f'SELECT raid_mc FROM groups WHERE id={id}')
+            return res.fetchone()
+        except sqlite3.Error as e:
+            logger.warning(f'Database Error - {e}')
+
+    def update_group_mc(self, id, count):
+        try:
+            self.cur.execute(f'UPDATE groups SET raid_mc={count} WHERE id={id}')
+        except sqlite3.Error as e:
+            logger.warning(f'DB Error - {e}')
+
+        
+
     
     def get_raids(self):
         try:
