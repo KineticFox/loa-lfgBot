@@ -4,6 +4,7 @@ from discord.ext import commands
 import dotenv
 from loabot_db import LBDB
 import random
+from time import sleep
 
 import logging
 
@@ -123,7 +124,7 @@ class JoinRaid(discord.ui.View):
         self.embed = interaction.message.embeds[0]
         edict = self.embed.to_dict()
         fields = edict.get('fields')
-        self.group_id = field[5].get('value') #groupd tabel id
+        self.group_id = fields[5].get('value') #groupd tabel id
         thread_id = None
         thread = None
         temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
@@ -142,9 +143,9 @@ class JoinRaid(discord.ui.View):
             if t.name == self.embed.title:
                 thread_id = t.id
         thread = chanell.get_thread(thread_id)
+        message = interaction.message.id
         await interaction.response.edit_message(view=self)
-        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self), embed=panel)
-        self.user_chars.clear() #propably clears list needs to be tested
+        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, self.group_id, thread, message), embed=panel)
 
   
     @discord.ui.button(
@@ -236,10 +237,12 @@ class JoinRaid(discord.ui.View):
 #--------------------- Subclassed view elements -----------------------------------#
 
 class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview, group_id):
+    def __init__(self, orgview, group_id, thread, message):
         self.orgview = orgview
         self.user_chars = self.orgview.user_chars
         self.id = group_id
+        self.thread = thread
+        self.message = message
         super().__init__(
             timeout=120, 
             disable_on_timeout=True
@@ -319,7 +322,7 @@ class DPSButton(discord.ui.Button):
         )
     
     async def callback(self, interaction: discord.Interaction):
-        threadMeembers = await self.view.orgview.thread.fetch_members()
+        threadMeembers = await self.view.thread.fetch_members()
         char_select = self.view.get_item('character_selection')
         #TODO: access view.orgview and get group id
         if any(m.id == interaction.user.id for m in threadMeembers):
@@ -330,15 +333,15 @@ class DPSButton(discord.ui.Button):
             n = ''.join(self.view.orgview.dpsvalue)
             self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.orgview.dps)
             self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-            #button.disabled = True
-            #supp_button.disabled = True
             #testdict = self.embed.to_dict()
             #print('test dict: ', testdict)
             self.view.orgview.user_chars.clear() #clear list
-            await self.view.orgview.thread.add_user(interaction.user)
+            await self.view.thread.add_user(interaction.user)
             #self.view.remove_item(char_select)
             #self.view.remove_item(self)
-            await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
+            #await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
+            #await self.view.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
+            logger.debug(f'VIEW - {self.view.message}')
             await interaction.response.defer()
             await interaction.delete_original_response()
 
@@ -614,6 +617,22 @@ def run():
     @bot.slash_command(name="testing")
     async def testing(ctx):
         await ctx.respond('lets go', view=TestView(db))
+
+    @bot.slash_command(name="clear")
+    async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)):
+        if amount:
+            #await ctx.channel.purge(limit=amount, bulk=False)
+            #await ctx.respond(f'deleted {amount} messages',ephemeral=True, delete_after=10)
+            for i in range(0, amount):
+                await ctx.channel.purge(limit=5, bulk=False)
+                await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
+                sleep(10)
+                
+        else:
+            await ctx.channel.purge(limit=5, bulk=False)
+            await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
+            
+
     
    
 
