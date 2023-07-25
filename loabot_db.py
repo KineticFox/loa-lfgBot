@@ -115,7 +115,7 @@ class LBDB:
     
     def add_chars(self, chars, cl, user, ilvl):
         try:
-            row = self.cur.execute(f'SELECT char_name FROM user WHERE char_name="{user}"')
+            row = self.cur.execute(f'SELECT char_name FROM chars WHERE char_name="{chars}"')
             res = row.fetchall()
             if len(res) != 0:
                 logger.info(f'Char {chars} already exists in DB')
@@ -126,6 +126,7 @@ class LBDB:
                 return f'Add your char {chars} to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
+	    return f'DB error: {e}'
         
 
     def store_raids(self, title, raid, raid_mode, date, mc=None,):
