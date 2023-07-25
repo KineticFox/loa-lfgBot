@@ -126,8 +126,7 @@ class LBDB:
                 return f'Add your char {chars} to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
-	    return f'DB error: {e}'
-        
+            return f'add char DB error: {e}'
 
     def store_raids(self, title, raid, raid_mode, date, mc=None,):
         
