@@ -574,8 +574,8 @@ def run():
     
     @bot.slash_command(name="db_adduser", description="adds the user to the DB")
     async def db_adduser(ctx):    
-        db.add_user(ctx.author.name)
-        await ctx.respond('added your DC-User to the DB', ephemeral=True, delete_after=20)
+        str_res = db.add_user(ctx.author.name)
+        await ctx.respond(str_res, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
     async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
@@ -585,14 +585,44 @@ def run():
         await ctx.respond(f'your table view {dicts}', delete_after=30)
     
     @bot.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
-    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True)):
-        db.add_chars(char, cl, ctx.author.name)
-        await ctx.respond('added your char to the DB', ephemeral=True, delete_after=20)
+    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True), ilvl: discord.Option(int, 'item level', required=True)):
+        result = db.add_chars(char, cl, ctx.author.name, ilvl)
+        await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="db_getchars", description="shows all chars of the user")
-    async def db_getchars(ctx):
-        res = db.get_chars(ctx.author.name)
-        await ctx.respond(f'Your chars: {res}', ephemeral=True)
+    async def db_getchars(ctx, user: discord.Option(str, 'User', required=False)):
+        panel = discord.Embed(
+            title='Char overview',
+            color=discord.Colour.blue(),
+        )
+        names = []
+        classes = []
+        ilvl =[]
+
+        if user:
+            result = db.get_chars(ctx.author.name)
+            chardicts = [{k: item[k] for k in item.keys()} for item in result]
+            for c in chardicts:
+                names.append(c.get('char_name'))
+                classes.append(c.get('class'))
+                ilvl.append(c.get('ilvl'))
+                
+        else:    
+            result = db.get_chars(ctx.author.name)
+            chardicts = [{k: item[k] for k in item.keys()} for item in result]
+            for c in chardicts:
+                names.append(c.get('char_name'))
+                classes.append(c.get('class'))
+                ilvl.append(c.get('ilvl'))
+
+        e_names = "\n".join(str(name) for name in names)
+        e_class = "\n".join(str(c) for c in classes)
+        e_ilvl = "\n".join(str(lvl) for lvl in ilvl)
+
+        panel.add_field(name='Name', value=e_names)
+        panel.add_field(name='Class', value=e_class)
+        panel.add_field(name='ilvl', value=e_ilvl)
+        await ctx.respond(f'Characters - {ctx.author.name}', embed=panel, ephemeral=False)
 
     @bot.slash_command(name="db_addraid", description="Adds a new Raid to lfg selection")
     async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', required=True)):
@@ -631,6 +661,11 @@ def run():
         else:
             await ctx.channel.purge(limit=5, bulk=False)
             await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
+    
+    @bot.slash_command(name="sql")
+    async def run_command(ctx, command:discord.Option(str, 'command', required=True)):
+        res = db.raw_SQL(command)
+        await ctx.respond(res, ephemeral=True, delete_after=20)
             
 
     

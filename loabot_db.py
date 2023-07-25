@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+from collections import namedtuple
 
 logger = logging.getLogger('DB')
 logger.setLevel(logging.DEBUG)
@@ -15,12 +16,13 @@ class LBDB:
         #self.con.row_factory =  lambda cursor, row: row[0]
         self.con.row_factory = sqlite3.Row
         self.cur = self.con.cursor()
-
+        
+    
     def createTables(self):
  
         try:            
             self.cur.execute("CREATE TABLE user(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)")
-            self.cur.execute("CREATE TABLE chars(user_id INTEGER NOT NULL, char_name STRING PRIMARY KEY, class TEXT NOT NULL, FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE ON UPDATE NO ACTION)")
+            self.cur.execute("CREATE TABLE chars(user_id INTEGER NOT NULL, char_name STRING PRIMARY KEY, class TEXT NOT NULL, ilvl INTEGER NOT NULL, FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE ON UPDATE NO ACTION)")
             self.cur.execute("CREATE TABLE groups(id INTEGER PRIMARY KEY AUTOINCREMENT, raid_title TEXT NOT NULL, raid TEXT NOT NULL,raid_mode TEXT NOT NULL, raid_mc INTEGER, date TEXT)")
             self.cur.execute("CREATE TABLE raidmember(raid_id INTEGER NOT NULL, user_id INTEGER NOT NULL, char_name TEXT NOT NULL, FOREIGN KEY (raid_id) REFERENCES groups (id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE, FOREIGN KEY (char_name) REFERENCES chars (char_name))")
             self.cur.execute("CREATE TABLE raids(name TEXT NOT NULL, modes TEXT NOT NULL, member INT NOT NULL, type TEXT NOT NULL)")
@@ -37,7 +39,7 @@ class LBDB:
 
     def get_chars(self, user):
         try:
-            res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user where name="{user}")')
+            res = self.cur.execute(f'SELECT char_name, class, ilvl FROM chars WHERE user_id=(SELECT id FROM user where name="{user}")')
             return res.fetchall()
         except sqlite3.Error as e:
             logger.warning(f'Database Error - {e}')
@@ -82,8 +84,15 @@ class LBDB:
 
     def add_user(self, user):
         try:
-            self.cur.execute(f'INSERT INTO user(name) VALUES ("{user}")')
-            self.con.commit()
+            row = self.cur.execute(f'SELECT name FROM user WHERE name="{user}"')
+            res = row.fetchall()
+            if len(res) != 0:
+                logger.info(f'User {user} already exists in DB')
+                return f'User {user} already exists in DB'
+            else:
+                self.cur.execute(f'INSERT INTO user(name) VALUES ("{user}")')
+                self.con.commit()
+                return f'added your DC-User "{user}" to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insert error: {e}')
     
@@ -104,10 +113,17 @@ class LBDB:
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
     
-    def add_chars(self, chars, cl, user):
+    def add_chars(self, chars, cl, user, ilvl):
         try:
-            self.cur.execute(f'INSERT INTO chars(user_id, char_name, class) VALUES((SELECT id FROM user WHERE name="{user}"), "{chars}", "{cl}")')
-            self.con.commit()
+            row = self.cur.execute(f'SELECT char_name FROM user WHERE char_name="{user}"')
+            res = row.fetchall()
+            if len(res) != 0:
+                logger.info(f'Char {chars} already exists in DB')
+                return f'Char {chars} already exists in DB'
+            else:
+                self.cur.execute(f'INSERT INTO chars(user_id, char_name, class, ilvl) VALUES((SELECT id FROM user WHERE name="{user}"), "{chars}", "{cl}","{ilvl}")')
+                self.con.commit()
+                return f'Add your char {chars} to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
         
@@ -148,3 +164,12 @@ class LBDB:
         except sqlite3.Error as e:
             logger.warning(f'Show table Error: {e}')
             return ['DB error']
+        
+    def raw_SQL(self, command):
+        try:
+            self.cur.execute(command)
+            self.con.commit()
+            return "command worked"
+        except sqlite3.Error as e:
+            return f'command failed; {e}'
+            logger.warning(f'Raw SQL Error: {e}')
