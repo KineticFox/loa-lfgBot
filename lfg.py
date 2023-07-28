@@ -33,14 +33,7 @@ class LegionRaidCreation(discord.ui.View):
         self.add_item(RaidSelect(self))
         self.embed = embed
         self.thread = None
-        
 
-    #def options():
-    #    list = []
-    #    print('legin creation ',raids)
-    #    for raid in raids:
-    #        list.append(discord.SelectOption(label=raid, description=raids[raid].get('type')))
-    #    return list
 
     def set_modes(self, select, value):
         modes = value.get('modes')
@@ -71,14 +64,17 @@ class LegionRaidCreation(discord.ui.View):
     async def button_callback(self, button, interaction):
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
-        self.thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
+        #self.thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
+        thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
+        thread_id = thread.id
+
 
         edict = embed.to_dict()
         fields = edict.get('fields')
         print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
 
 
-        riad_id = self.db.store_raids(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'))
+        riad_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), thread_id, fields[0].get('value'))
         #edict['title'] = f'{edict.get("title")} '
         logger.info(f"Created Raid: {edict.get('title')}")
         embed.add_field(name='Anzahl DPS: ', value=0)
@@ -263,8 +259,7 @@ class CharSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
-        self.view.add_item(DPSButton(selectedChar))
-        self.view.add_item(SUPPButton(selectedChar))           
+        self.view.add_item(JoinButton(selectedChar))          
         await interaction.response.edit_message(view=self.view)
 
 class RaidSelect(discord.ui.Select):
@@ -310,7 +305,7 @@ class RaidModeSelect(discord.ui.Select):
 
 
 
-class DPSButton(discord.ui.Button):
+class JoinButton(discord.ui.Button):
     def __init__(self, selection):
         self.char = selection
 
@@ -342,32 +337,6 @@ class DPSButton(discord.ui.Button):
             #await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
             #await self.view.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
             logger.debug(f'VIEW - {self.view.message}')
-            await interaction.response.defer()
-            await interaction.delete_original_response()
-
-class SUPPButton(discord.ui.Button):
-    def __init__(self, selection):
-        self.char = selection
-        super().__init__(
-            style=discord.ButtonStyle.blurple, 
-            label = 'SUPP', 
-            disabled=False, 
-            custom_id='join_supp'
-            )
-    
-    async def callback(self, interaction: discord.Interaction):
-        threadMeembers = await self.view.orgview.thread.fetch_members()
-        char_select = self.view.get_item('character_selection')
-
-        if any(m.id == interaction.user.id for m in threadMeembers):
-            await interaction.response.send_message('you are already in this group', ephemeral=True)
-        else:
-            self.view.orgview.suppvalue.append(f'{self.char} - {interaction.user.name}\n')
-            n = ''.join(self.view.orgview.suppvalue)
-            self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=self.view.orgview.supp)
-            self.view.orgview.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-            await self.view.orgview.thread.add_user(interaction.user)
-            await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
             await interaction.response.defer()
             await interaction.delete_original_response()
 
