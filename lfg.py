@@ -74,8 +74,10 @@ class LegionRaidCreation(discord.ui.View):
         print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
 
 
-        riad_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), thread_id, fields[0].get('value'))
-        #edict['title'] = f'{edict.get("title")} '
+        riad_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
+
+        logger.debug(f'stored raid group with ID {riad_id}')
+
         logger.info(f"Created Raid: {edict.get('title')}")
         embed.add_field(name='Anzahl DPS: ', value=0)
         embed.add_field(name='Anzahl SUPP: ', value=0)
@@ -104,7 +106,6 @@ class JoinRaid(discord.ui.View):
         self.db = db
         self.user_chars = [] #TODO: clear list after join [x]
         self.parentview = self
-        self.thread = None
         self.embed = None
         self.group_id = None
 
@@ -120,7 +121,9 @@ class JoinRaid(discord.ui.View):
         self.embed = interaction.message.embeds[0]
         edict = self.embed.to_dict()
         fields = edict.get('fields')
-        self.group_id = fields[5].get('value') #groupd tabel id
+        print(fields)
+        print(fields[8].get('value'))
+        group_id = fields[8].get('value') #groupd tabel id
         thread_id = None
         thread = None
         temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
@@ -141,7 +144,7 @@ class JoinRaid(discord.ui.View):
         thread = chanell.get_thread(thread_id)
         message = interaction.message.id
         await interaction.response.edit_message(view=self)
-        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, self.group_id, thread, message), embed=panel)
+        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, group_id, thread, message), embed=panel)
 
   
     @discord.ui.button(
@@ -154,9 +157,8 @@ class JoinRaid(discord.ui.View):
     async def leave_callback(self, button, interaction):
         thread_id = None
         thread = None
-        embed = interaction.message.embeds[0]
         count = len(self.suppvalue) + len(self.dpsvalue)
-
+        embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
         allThreads = chanell.threads
         for t in allThreads:
@@ -166,9 +168,17 @@ class JoinRaid(discord.ui.View):
         thread = chanell.get_thread(thread_id)
         threadMeembers = await thread.fetch_members()
 
+
+        #cheating
+        count = 2
         if count <= 1:
             await interaction.response.send_message('you can not leave, try to delete the group instead', ephemeral=True)
         else:
+
+            
+            edict = embed.to_dict()
+            fields = edict.get('fields')
+            self.db.remove_groupmember(interaction.user.name, fields[8].get('value'))
 
             if any(m.id == interaction.user.id for m in threadMeembers):                
                     for dps in self.dpsvalue:
@@ -198,7 +208,7 @@ class JoinRaid(discord.ui.View):
 
 
             await interaction.response.edit_message(embed=self.embed, view=self)
-            await self.thread.remove_user(interaction.user)
+            await thread.remove_user(interaction.user)
                     
     @discord.ui.button(
         label='delete',
@@ -236,7 +246,7 @@ class JoinDialogue(discord.ui.View):
     def __init__(self, orgview, group_id, thread, message):
         self.orgview = orgview
         self.user_chars = self.orgview.user_chars
-        self.id = group_id
+        self.g_id = group_id
         self.thread = thread
         self.message = message
         super().__init__(
@@ -320,9 +330,15 @@ class JoinButton(discord.ui.Button):
         threadMeembers = await self.view.thread.fetch_members()
         char_select = self.view.get_item('character_selection')
         #TODO: access view.orgview and get group id
+
+        group_result = self.view.orgview.db.get_group(self.view.g_id)
+
+        logger.debug(f'Group: {group_result.keys()}')
+
         if any(m.id == interaction.user.id for m in threadMeembers):
             await interaction.response.send_message('you are already in this group', ephemeral=True)
         else:
+            self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, self.char)
             self.view.orgview.dpsvalue.append(f'{self.char} - {interaction.user.name}\n')
             #char_select.placeholder = 'Choose a Character'
             n = ''.join(self.view.orgview.dpsvalue)
@@ -365,65 +381,6 @@ class JoinButton(discord.ui.Button):
 #    'color': 3447003, 'type': 'rich', 'title': 'test'
 #}
 
-
-  
-    @discord.ui.button(
-        label='leave',
-        style=discord.ButtonStyle.red,
-        custom_id='leave_thread'
-    )
-
-
-    async def leave_callback(self, button, interaction):
-        threadMeembers = await self.thread.fetch_members()
-        count = len(self.suppvalue) + len(self.dpsvalue)
-        if count <= 1:
-            await interaction.response.send_message('you can not leave, try to delete the group instead', ephemeral=True)
-        else:
-
-            if any(m.id == interaction.user.id for m in threadMeembers):                
-                    for dps in self.dpsvalue:
-                        if str(interaction.user) in dps:
-                            self.dps -=1
-                            self.dpsvalue.remove(dps)
-                            if len(self.dpsvalue) < 1:
-                                self.embed.set_field_at(6, name='DPS', value=chr(173))
-                            else:
-                                n = ''.join(self.dpsvalue)
-                                self.embed.set_field_at(3,name='DPS:', value=self.dps)
-                                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-                            break
-                    
-                    
-                    for supp in self.suppvalue:
-                        if str(interaction.user) in supp:
-                            self.supp -=1
-                            self.suppvalue.remove(supp)
-                            if len(self.suppvalue) < 1:
-                                self.embed.set_field_at(6, name='SUPP', value=chr(173))
-                            else:
-                                n = ''.join(self.suppvalue)
-                                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
-                                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-                            break
-
-
-            await interaction.response.edit_message(embed=self.embed, view=self)
-            await self.thread.remove_user(interaction.user)
-                    
-    @discord.ui.button(
-        label='delete',
-        style=discord.ButtonStyle.red,
-        custom_id='delete_thread'
-    )
-
-    async def delete_callback(self, button, interaction):
-        author = self.embed.author.name
-
-        if str(interaction.user) == author:
-            await self.thread.delete()
-            await interaction.response.defer()
-            await interaction.message.delete()
 
 #TODO: improve editing of the embed
 # --> work with embed.to_dict / embed.from_dict
@@ -556,6 +513,11 @@ def run():
     @bot.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True), ilvl: discord.Option(int, 'item level', required=True)):
         result = db.add_chars(char, cl, ctx.author.name, ilvl)
+        await ctx.respond(result, ephemeral=True, delete_after=20)
+    
+    @bot.slash_command(name="db_updatechars", description="updates the i-lvl of given char in the DB")
+    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True), ilvl: discord.Option(int, 'ilvl', required=True)):
+        result = db.update_chars(charname, ilvl)
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="db_getchars", description="shows all chars of the user")
