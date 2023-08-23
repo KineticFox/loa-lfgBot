@@ -109,10 +109,10 @@ class LBDB:
         #    data = self.cur.execute(f'SELECT modes, member, type FROM raids WHERE name="{n}"')
         #    result = data.fetchall()
         #    print('inner: ', result)
-    def get_messages(self):
+    def get_message(self, raid_id):
         try:
-            res = self.cur.execute('Select * FROM messages')
-            return res.fetchall()
+            res = self.cur.execute(f'Select * FROM messages WHERE c_id={raid_id}')
+            return res.fetchone()
         except sqlite3.Error as e:
             logger.warning(f'Database get message Error - {e}')
             return ['error']
@@ -163,7 +163,7 @@ class LBDB:
             logger.warning(f'Add user insertion error: {e}')
             return f'add char DB error: {e}'
 
-    def store_group(self, title, raid, raid_mode, date, dc_id, mc=None):
+    def store_group(self, title, raid, raid_mode, date, dc_id, mc=0):
 
         try:
             self.cur.execute(f'INSERT INTO groups(raid_title, raid, raid_mode, raid_mc, date, dc_id) VALUES(?, ?, ?, ?, ?, ?)', [title, raid, raid_mode, mc, date, dc_id])

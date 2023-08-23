@@ -74,9 +74,9 @@ class LegionRaidCreation(discord.ui.View):
         print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
 
 
-        riad_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
+        raid_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
 
-        logger.debug(f'stored raid group with ID {riad_id}')
+        logger.debug(f'stored raid group with ID {raid_id}')
 
         logger.info(f"Created Raid: {edict.get('title')}")
         embed.add_field(name='Anzahl DPS: ', value=0)
@@ -84,8 +84,9 @@ class LegionRaidCreation(discord.ui.View):
         embed.add_field(name=chr(173), value=chr(173))
         embed.add_field(name='DPS', value=chr(173))
         embed.add_field(name='SUPP', value=chr(173))
-        embed.add_field(name='ID', value=riad_id)
-        await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db))
+        embed.add_field(name='ID', value=raid_id)
+        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db))
+        self.db.add_message(m.id, raid_id)
         await interaction.response.defer()
         await interaction.delete_original_response()
 
@@ -278,19 +279,41 @@ class CharSelect(discord.ui.Select):
 
         if(check is None):
             self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, selectedChar)
-            self.view.orgview.dpsvalue.append(f'{selectedChar} - {interaction.user.name}\n')
 
-            n = ''.join(self.view.orgview.dpsvalue)
-            self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.orgview.dps)
-            self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+            embed = interaction.message.embeds[0]
+            print(embed.to_dict())
+            #get mc from raid
+            res = self.view.orgview.db.get_group(self.view.g_id)
+            mc = res['raid_mc']
+
+            #get message id
+            message = self.view.orgview.db.get_message(self.view.g_id)
+            m_id = message['m_id']
+            print(m_id)
+
+            if(role['role'] == 'DPS'):
+                #update mc update_group_mc
+                mc += 1
+                self.view.orgview.dpsvalue.append(f'{selectedChar} - {interaction.user.name}\n')
+                self.view.orgview.db.update_group_mc(self.view.g_id, mc)
+                n = ''.join(self.view.orgview.dpsvalue)
+                self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=mc)
+                self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+
+            else:
+                pass
+                #update mc update_group_mc
 
             self.view.orgview.user_chars.clear() #clear list
 
             await self.view.thread.add_user(interaction.user)
 
             await interaction.response.edit_message(view=self.view)
-            await interaction.response.defer()
-            await interaction.delete_original_response()
+            channel = interaction.guild.get_channel(interaction.channel.id)
+            m = await channel.fetch_message(m_id)
+            await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
+            #await interaction.response.defer()
+            #await interaction.delete_original_response()
 
         else:
             name = check['char_name']
