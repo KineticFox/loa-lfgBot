@@ -64,6 +64,13 @@ class LBDB:
             self.cur.execute(f'UPDATE groups SET raid_mc={count} WHERE id={id}')
         except sqlite3.Error as e:
             logger.warning(f'DB update mc Error - {e}')
+    
+    def raidmember_check(self, raidid, username):
+        try:
+            res = self.cur.execute(f'SELECT char_name FROM raidmember WHERE raid_id="{raidid}" AND user_id=(SELECT id FROM user WHERE name="{username}")').fetchone()
+            return res
+        except sqlite3.Error as e:
+            logger.warning(f'raidmember check Error: {e}')
 
     def add_groupmember(self, raid_id, user_name, charname):
         try:
@@ -191,8 +198,15 @@ class LBDB:
             res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user WHERE name="{username}")').fetchall()
             return res
         except sqlite3.Error as e:
-            logger.warning(f'Show table Error: {e}')
+            logger.warning(f'Select chars table Error: {e}')
             return ['DB error']
+    
+    def get_charRole(self, charname):
+        try:
+            res = self.cur.execute(f'SELECT role FROM chars WHERE char_name="{charname}"').fetchone()
+            return res
+        except sqlite3.Error as e:
+            logger.warning(f'get char role Error: {e}')
         
     def raw_SQL(self, command):
         try:

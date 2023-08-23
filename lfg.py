@@ -121,8 +121,6 @@ class JoinRaid(discord.ui.View):
         self.embed = interaction.message.embeds[0]
         edict = self.embed.to_dict()
         fields = edict.get('fields')
-        print(fields)
-        print(fields[8].get('value'))
         group_id = fields[8].get('value') #groupd tabel id
         thread_id = None
         thread = None
@@ -269,8 +267,39 @@ class CharSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
-        self.view.add_item(JoinButton(selectedChar))          
-        await interaction.response.edit_message(view=self.view)
+
+        #get selected char from db for role
+        print(selectedChar)
+        role = self.view.orgview.db.get_charRole(selectedChar)
+        #get raid id, user id
+
+        #check if user is already connected to this raid id --> raidmember table
+        check = self.view.orgview.db.raidmember_check(self.view.g_id, interaction.user.name)
+
+        if(check is None):
+            self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, selectedChar)
+            self.view.orgview.dpsvalue.append(f'{selectedChar} - {interaction.user.name}\n')
+
+            n = ''.join(self.view.orgview.dpsvalue)
+            self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.orgview.dps)
+            self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+
+            self.view.orgview.user_chars.clear() #clear list
+
+            await self.view.thread.add_user(interaction.user)
+
+            await interaction.response.edit_message(view=self.view)
+            await interaction.response.defer()
+            await interaction.delete_original_response()
+
+        else:
+            name = check['char_name']
+            await interaction.response.send_message(f'you are already in this group with {name}', ephemeral=True)
+
+        
+
+        #self.view.add_item(JoinButton(selectedChar))          
+        #await interaction.response.edit_message(view=self.view)
 
 class RaidSelect(discord.ui.Select):
     def __init__(self, parentview) -> None:
