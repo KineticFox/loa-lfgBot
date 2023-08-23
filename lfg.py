@@ -458,6 +458,8 @@ async def persistent_setup(db, bot):
     logger.info('Add all persistent views')
 
 
+classes = ['Artillerist', 'Sorceress', 'Painter', 'Destroyer', 'Berserker', 'Gunlancer', 'Paladin', 'Slayer', 'Arcanist', 'Bard', 'Summoner', 'Glaivier', 'Scrapper', 'Soulfist', 'Striker', 'Wardancer', 'Deadey', 'Gunslinger', 'Machinist', 'Sharpshooter', 'Deathblade', 'Reaper', 'Shadowhunter']
+
 def run():
 
     dotenv.load_dotenv()
@@ -467,7 +469,6 @@ def run():
     bot = commands.Bot(command_prefix='!', intents=intents)
     db = LBDB()
     
-    #bot.get_message(id)
     
     @bot.event
     async def on_ready():
@@ -511,8 +512,8 @@ def run():
         await ctx.respond(f'your table view {dicts}', delete_after=30)
     
     @bot.slash_command(name="db_addchars", description="adds a given char of the user to the DB")
-    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Charclass', required=True), ilvl: discord.Option(int, 'item level', required=True)):
-        result = db.add_chars(char, cl, ctx.author.name, ilvl)
+    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Class', required=True, choices=classes), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
+        result = db.add_chars(char, cl, ctx.author.name, ilvl, role)
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="db_updatechars", description="updates the i-lvl of given char in the DB")
