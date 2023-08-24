@@ -71,8 +71,14 @@ class LegionRaidCreation(discord.ui.View):
 
         edict = embed.to_dict()
         fields = edict.get('fields')
-        print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
+        #print(edict.get('title'), fields[0].get('value'), fields[1].get('value'), fields[2].get('value'))#.get('name'))
 
+        fname = fields[1].get('value')
+        fname_lower = fname.lower()
+
+        file = discord.File(f'ressources/{fname_lower}.png', filename="image.png")
+        #embed.set_image(url="attachment://image.png")
+        embed.set_thumbnail(url="attachment://image.png")
 
         raid_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
 
@@ -85,7 +91,7 @@ class LegionRaidCreation(discord.ui.View):
         embed.add_field(name='DPS', value=chr(173))
         embed.add_field(name='SUPP', value=chr(173))
         embed.add_field(name='ID', value=raid_id)
-        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db))
+        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db), file=file)
         self.db.add_message(m.id, raid_id)
         await interaction.response.defer()
         await interaction.delete_original_response()
@@ -301,8 +307,12 @@ class CharSelect(discord.ui.Select):
                 self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
 
             else:
-                pass
-                #update mc update_group_mc
+                mc += 1
+                self.view.orgview.suppvalue.append(f'{selectedChar} - {interaction.user.name}\n')
+                self.view.orgview.db.update_group_mc(self.view.g_id, mc)
+                n = ''.join(self.view.orgview.suppvalue)
+                self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=mc)
+                self.view.orgview.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
 
             self.view.orgview.user_chars.clear() #clear list
 
@@ -613,6 +623,7 @@ def run():
         #m = json.dumps(modes)
         #print(m)
         db.add_raids(name,modes,member,raidtype)
+        set_Raids(db)
         await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="db_testraid")
