@@ -65,8 +65,7 @@ class LegionRaidCreation(discord.ui.View):
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
         #self.thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        thread_id = thread.id
+        
 
 
         edict = embed.to_dict()
@@ -75,14 +74,12 @@ class LegionRaidCreation(discord.ui.View):
 
         fname = fields[1].get('value')
         fname_lower = fname.lower()
+        
+        #upload image
+        result = self.db.get_image_url(fname_lower)
+        url = result['url']
 
-        file = discord.File(f'ressources/{fname_lower}.png', filename="image.png")
-        #embed.set_image(url="attachment://image.png")
-        embed.set_thumbnail(url="attachment://image.png")
-
-        raid_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
-
-        logger.debug(f'stored raid group with ID {raid_id}')
+        embed.set_thumbnail(url=url)       
 
         logger.info(f"Created Raid: {edict.get('title')}")
         embed.add_field(name='Anzahl DPS: ', value=0)
@@ -90,9 +87,17 @@ class LegionRaidCreation(discord.ui.View):
         embed.add_field(name=chr(173), value=chr(173))
         embed.add_field(name='DPS', value=chr(173))
         embed.add_field(name='SUPP', value=chr(173))
-        embed.add_field(name='ID', value=raid_id)
-        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db), file=file)
+        
+        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid(self.db))
+        thread = await m.create_thread(name=f"{embed.title}")#, type=discord.ChannelType.public_thread)
+        thread_id = thread.id
+        
+        raid_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
         self.db.add_message(m.id, raid_id)
+        embed.add_field(name='ID', value=raid_id)
+
+        await m.edit(embed=embed ,view=JoinRaid(self.db))
+        logger.debug(f'stored raid group with ID {raid_id}')
         await interaction.response.defer()
         await interaction.delete_original_response()
 
@@ -447,46 +452,6 @@ class JoinButton(discord.ui.Button):
 #TODO: improve editing of the embed
 # --> work with embed.to_dict / embed.from_dict
 
-class TestView(discord.ui.View):
-    def __init__(self,db):
-        #self.bot = bot
-        self.db = db
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(
-        label='Testing',
-        style=discord.ButtonStyle.red,
-        custom_id='tester'
-    )
-        
-    async def button_callback(self, button, interaction):
-
-        title = random.randint(1,100)
-        panel = discord.Embed(
-            title=title,
-            color=discord.Colour.blue(),
-        )
-        panel.set_author(name=interaction.user)
-
-        #chanell = self.bot.get_channel(interaction.channel_id)
-        chanell = interaction.guild.get_channel(interaction.channel.id)
-        msg = await chanell.send('A Test spawns, come and join', embed=panel ,view=TestFollow())
-        self.db.add_message(msg.id, chanell.id)
-        await interaction.response.send_message("started", delete_after=10)
-
-class TestFollow(discord.ui.View):
-    def __init__(self):
-        #self.embed = embed
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(
-        label='Testing follow',
-        style=discord.ButtonStyle.blurple,
-        custom_id='tester1'
-    )
-
-    async def button_callback(self, button, interaction):
-        msg = await interaction.response.send_message(f'Hello {interaction.user}, this is a follow test for {interaction.message.embeds[0].title}')
 
 
 
@@ -537,8 +502,6 @@ def run():
         logger.info(f"We have logged in as {bot.user}")
         db.setup()
         set_Raids(db)
-        bot.add_view(TestView(db))
-        bot.add_view(TestFollow())
         bot.add_view(JoinRaid(db))
         #await persistent_setup(db, bot)
         logger.info('Setup in general done')
@@ -623,8 +586,20 @@ def run():
         #m = json.dumps(modes)
         #print(m)
         db.add_raids(name,modes,member,raidtype)
+
+        fname_lower = name.lower()
+
+        file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
+
+        
+        
+
         set_Raids(db)
+        
         await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
+        attachment = await ctx.send('Uploaded image', file=file)
+        url = attachment.attachments[0].url
+        db.save_image(fname_lower, url)
     
     @bot.slash_command(name="db_testraid")
     async def db_testraid(ctx):
@@ -639,10 +614,6 @@ def run():
         #print(rr)
         await ctx.respond(f'loaded all raids ', ephemeral=True, delete_after=20)
     
-    @bot.slash_command(name="testing")
-    async def testing(ctx):
-        await ctx.respond('lets go', view=TestView(db))
-
     @bot.slash_command(name="clear")
     async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)):
         if amount:

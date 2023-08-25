@@ -27,6 +27,7 @@ class LBDB:
             self.cur.execute("CREATE TABLE raidmember(raid_id INTEGER NOT NULL, user_id INTEGER NOT NULL, char_name TEXT NOT NULL, FOREIGN KEY (raid_id) REFERENCES groups (id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE, FOREIGN KEY (char_name) REFERENCES chars (char_name))")
             self.cur.execute("CREATE TABLE raids(name TEXT NOT NULL, modes TEXT NOT NULL, member INT NOT NULL, type TEXT NOT NULL)")
             self.cur.execute("CREATE TABLE messages(m_id INT NOT NULL, c_id INT NOT NULL)")
+            self.cur.execute("CREATE TABLE images(raid TEXT NOT NULL, url TEXT NOT NULL)")
             self.con.commit()
             logger.info('Created all tables')
         except sqlite3.OperationalError:
@@ -109,6 +110,24 @@ class LBDB:
         #    data = self.cur.execute(f'SELECT modes, member, type FROM raids WHERE name="{n}"')
         #    result = data.fetchall()
         #    print('inner: ', result)
+
+
+    def save_image(self, raid, url):
+        try:
+            self.cur.execute(f'INSERT INTO images(raid, url) VALUES("{raid}", "{url}")')
+            self.con.commit()
+        except sqlite3.Error as e:
+            logger.warning(f'Database save image Error - {e}')
+
+    def get_image_url(self, raid):
+        try:
+            res = self.cur.execute(f'SELECT url FROM images WHERE raid="{raid}"').fetchone()
+            return res
+        except sqlite3.Error as e:
+            logger.warning(f'Database get image Error: {e}')
+            
+
+
     def get_message(self, raid_id):
         try:
             res = self.cur.execute(f'Select * FROM messages WHERE c_id={raid_id}')
