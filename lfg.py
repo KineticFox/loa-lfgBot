@@ -178,46 +178,51 @@ class JoinRaid(discord.ui.View):
         thread = chanell.get_thread(thread_id)
         threadMeembers = await thread.fetch_members()
 
+        #get group id
+        embed_dict = embed.to_dict()
+        fields = embed_dict.get('fields')
+        group_id = fields[8].get('value')
 
-        #cheating
-        count = 2
-        if count <= 1:
-            await interaction.response.send_message('you can not leave, try to delete the group instead', ephemeral=True)
+        #get char of user
+        char_result = self.db.raidmember_check(group_id, interaction.user.name)
+        
+
+        #check if user is raid member      
+
+        if char_result is None:
+            await interaction.response.send_message('you can not leave, you are not member of the party', ephemeral=True)
         else:
 
-            
-            edict = embed.to_dict()
-            fields = edict.get('fields')
-            self.db.remove_groupmember(interaction.user.name, fields[8].get('value'))
+            char = char_result['char_name']
+            #get role of user
+            role_result = self.db.get_charRole(char)
+            role = role_result['role']
 
-            if any(m.id == interaction.user.id for m in threadMeembers):                
-                    for dps in self.dpsvalue:
-                        if str(interaction.user) in dps:
-                            self.dps -=1
-                            self.dpsvalue.remove(dps)
-                            if len(self.dpsvalue) < 1:
-                                self.embed.set_field_at(6, name='DPS', value=chr(173))
-                            else:
-                                n = ''.join(self.dpsvalue)
-                                self.embed.set_field_at(3,name='DPS:', value=self.dps)
-                                self.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-                            break
-                    
-                    
-                    for supp in self.suppvalue:
-                        if str(interaction.user) in supp:
-                            self.supp -=1
-                            self.suppvalue.remove(supp)
-                            if len(self.suppvalue) < 1:
-                                self.embed.set_field_at(6, name='SUPP', value=chr(173))
-                            else:
-                                n = ''.join(self.suppvalue)
-                                self.embed.set_field_at(4,name='SUPP:', value=self.supp)
-                                self.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
-                            break
+            group_result = self.db.get_group(group_id)
+            mc = group_result['raid_mc']
 
+            if role == 'DPS':
+                mc -= 1
+                self.db.update_group_mc(group_id, mc)
+                self.dpsvalue.clear()
+                dps_string = fields[6].get('value')
+                new_dps_string = dps_string.replace(f'{char} - {interaction.user.name}', '')
+                embed.set_field_at(6, name='DPS', value=new_dps_string)
+                embed.set_field_at(3,name='Anzahl DPS:', value=mc)
+                self.db.remove_groupmember(interaction.user.name, group_id)
 
-            await interaction.response.edit_message(embed=self.embed, view=self)
+            else:
+                mc -= 1
+                self.db.update_group_mc(group_id, mc)
+                self.suppvalue.clear()
+                supp_string = fields[7].get('value')
+                new_supp_string = supp_string.replace(f'{char} - {interaction.user.name}', '')
+                embed.set_field_at(7, name='SUPP', value=new_supp_string)
+                embed.set_field_at(4,name='Anzahl SUPP:', value=mc)
+
+                self.db.remove_groupmember(interaction.user.name, group_id)
+
+            await interaction.response.edit_message(embed=embed, view=self)
             await thread.remove_user(interaction.user)
                     
     @discord.ui.button(
@@ -291,8 +296,6 @@ class CharSelect(discord.ui.Select):
         if(check is None):
             self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, selectedChar)
 
-            embed = interaction.message.embeds[0]
-            print(embed.to_dict())
             #get mc from raid
             res = self.view.orgview.db.get_group(self.view.g_id)
             mc = res['raid_mc']
@@ -300,24 +303,28 @@ class CharSelect(discord.ui.Select):
             #get message id
             message = self.view.orgview.db.get_message(self.view.g_id)
             m_id = message['m_id']
-            print(m_id)
+
+            e_dict = self.view.orgview.embed.to_dict()
+            e_fields = e_dict.get('fields')
 
             if(role['role'] == 'DPS'):
                 #update mc update_group_mc
                 mc += 1
                 self.view.orgview.dpsvalue.append(f'{selectedChar} - {interaction.user.name}\n')
                 self.view.orgview.db.update_group_mc(self.view.g_id, mc)
-                n = ''.join(self.view.orgview.dpsvalue)
                 self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=mc)
-                self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
+                dps_string = e_fields[6].get('value')
+                new_dps_string = dps_string + f'\n{selectedChar} - {interaction.user.name}\n'
+                self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
 
             else:
                 mc += 1
                 self.view.orgview.suppvalue.append(f'{selectedChar} - {interaction.user.name}\n')
                 self.view.orgview.db.update_group_mc(self.view.g_id, mc)
-                n = ''.join(self.view.orgview.suppvalue)
                 self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=mc)
-                self.view.orgview.embed.set_field_at(7, name='SUPP', value=f"""{n}""")
+                supp_string = e_fields[7].get('value')
+                new_supp_string = supp_string + f'\n{selectedChar} - {interaction.user.name}\n'
+                self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
             self.view.orgview.user_chars.clear() #clear list
 

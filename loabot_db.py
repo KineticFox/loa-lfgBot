@@ -212,7 +212,7 @@ class LBDB:
         
         
     
-    def select_chars(self, username,):
+    def select_chars(self, username):
         try:
             res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user WHERE name="{username}")').fetchall()
             return res
