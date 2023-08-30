@@ -114,8 +114,14 @@ class LBDB:
 
     def save_image(self, raid, url):
         try:
-            self.cur.execute(f'INSERT INTO images(raid, url) VALUES("{raid}", "{url}")')
-            self.con.commit()
+            result = self.cur.execute(f'SELECT * FROM images WHERE raid="{raid}"').fetchone()
+
+            if result is None:
+                self.cur.execute(f'INSERT INTO images(raid, url) VALUES("{raid}", "{url}")')
+                self.con.commit()
+            else:
+                logger.debug(f'Images for {raid} already exists')
+            
         except sqlite3.Error as e:
             logger.warning(f'Database save image Error - {e}')
 
@@ -162,8 +168,15 @@ class LBDB:
     def add_raids(self, name, modes, member, rtype):
         # modes  must be in format '{"modes":["Normal Mode, 1370","...", ...]}'
         try:
-            self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES (?, ?, ?, ?)', [name, modes, member, rtype])
-            self.con.commit()
+            result = self.cur.execute(f'SELECT * FROM raids WHERE name="{name}"').fetchone()
+            if result is None:
+                self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES (?, ?, ?, ?)', [name, modes, member, rtype])
+                self.con.commit()
+                return 1
+            else:
+                logger.debug(f'Raid {name} already exists')
+                return 0
+
         except sqlite3.Error as e:
             logger.warning(f'Add raid insertion error: {e}')
     
