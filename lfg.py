@@ -438,7 +438,7 @@ def set_Raids(db):
         logger.info('Raids are set')
 
 async def raid_list_init(db, context):
-    raid_file = open('loa_data.json')
+    raid_file = open('data/loa_data.json')
     data = json.load(raid_file)
 
     for i in data['raids']:
@@ -472,7 +472,7 @@ async def persistent_setup(db, bot):
 
 def load_classes():
     class_list = []
-    classes_file = open('loa_data.json')
+    classes_file = open('data/loa_data.json')
     data = json.load(classes_file)
 
     for i in data['classes']:
@@ -579,7 +579,7 @@ def run():
     @bot.slash_command(name="update_raids", description="Updates Raids")
     async def db_updateraids(ctx):
 
-        raid_file = open('loa_data.json')
+        raid_file = open('data/loa_data.json')
         data = json.load(raid_file)
 
         for i in data['raids']:

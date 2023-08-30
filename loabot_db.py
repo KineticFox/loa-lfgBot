@@ -12,7 +12,7 @@ logger.propagate = False
 
 class LBDB:
     def __init__(self) -> None:
-        self.con = sqlite3.connect('loabot.db')
+        self.con = sqlite3.connect('data/loabot.db')
         #self.con.row_factory =  lambda cursor, row: row[0]
         self.con.row_factory = sqlite3.Row
         self.cur = self.con.cursor()
