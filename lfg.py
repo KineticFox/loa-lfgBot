@@ -1,6 +1,9 @@
 import os
 import discord
+from discord.components import SelectOption
+from discord.enums import ChannelType, ComponentType
 from discord.ext import commands
+from discord.interactions import Interaction
 import dotenv
 from loabot_db import LBDB
 import json
@@ -30,7 +33,7 @@ class LegionRaidCreation(discord.ui.View):
         self.raids = raids
         self.modes = {}
         self.selectedRaid = {}
-        self.add_item(RaidSelect(self))
+        self.add_item(RaidType(self))
         self.embed = embed
         self.thread = None
 
@@ -65,8 +68,6 @@ class LegionRaidCreation(discord.ui.View):
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
         #self.thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
-        
-
 
         edict = embed.to_dict()
         fields = edict.get('fields')
@@ -354,15 +355,35 @@ class CharSelect(discord.ui.Select):
             name = check['char_name']
             await interaction.response.send_message(f'you are already in this group with {name}', ephemeral=True)
 
-
-class RaidSelect(discord.ui.Select):
+class RaidType(discord.ui.Select):
     def __init__(self, parentview) -> None:
         self.parentview = parentview
+        def set_options():
+            types = ['Legion', 'Abyssal', 'Guardian']
+            list = []
+            for t in types:
+                list.append(discord.SelectOption(label=t))
+            return list
+        super().__init__(custom_id='raid_type', placeholder='Choose a Raid Type', min_values=1, max_values=1, options=set_options(), disabled=False)
+
+    async def callback(self, interaction: discord.Interaction):
+        r_type = self.values[0]
+        self.placeholder = self.values[0]
+        self.parentview.add_item(RaidSelect(parentview=self.parentview, raid_type=r_type))
+        self.disabled = True
+        await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+
+
+class RaidSelect(discord.ui.Select):
+    def __init__(self, parentview, raid_type) -> None:
+        self.parentview = parentview
+        self.raid_type= raid_type
         def set_options():
             list = []
             #print('legin creation ',self.parentview.raids['Valtan'])
             for key, value in self.parentview.raids.items():
-                list.append(discord.SelectOption(label=key, description=value.get('type')))
+                if value.get('type') == self.raid_type:
+                    list.append(discord.SelectOption(label=key, description=value.get('type')))
             return list
 
         super().__init__(custom_id='raid_selection', placeholder='Choose a Raid', min_values=1, max_values=1, options=set_options(), disabled=False)
@@ -450,16 +471,16 @@ async def persistent_setup(db, bot):
     logger.info('Add all persistent views')
 
 def load_classes():
+    class_list = []
     classes_file = open('loa_data.json')
     data = json.load(classes_file)
 
     for i in data['classes']:
-        classes.append(i)
+        class_list.append(i)
 
     classes_file.close()
-
-    logger.info('loaded all classes')
-    logger.debug(f'classes: {classes}')
+   
+    return class_list
 
 def run():
 
@@ -476,7 +497,6 @@ def run():
         logger.info(f"We have logged in as {bot.user}")
         db.setup()
         set_Raids(db)
-        load_classes()
         bot.add_view(JoinRaid(db))
         #await persistent_setup(db, bot)
         logger.info('Setup in general done')
@@ -512,7 +532,7 @@ def run():
         await ctx.respond(f'your table view {dicts}', delete_after=30)
     
     @bot.slash_command(name="register_char", description="adds a given char of the user to the DB")
-    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Class', required=True, choices=classes), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
+    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
         result = db.add_chars(char, cl, ctx.author.name, ilvl, role)
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
