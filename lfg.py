@@ -72,6 +72,7 @@ class LegionRaidCreation(discord.ui.View):
         fields = edict.get('fields')
 
         fname = fields[1].get('value')
+        fname_lower = fname.lower()
 
         type_result = self.db.get_raidtype(fname)
         type = type_result['type']
@@ -84,7 +85,7 @@ class LegionRaidCreation(discord.ui.View):
             result = self.db.get_image_url(fname_lower)
             url = result['url']
         
-        fname_lower = fname.lower()      
+              
 
         embed.set_thumbnail(url=url)    
         embed.set_field_at(1, name='Raid: ', value=f'{fname} - {type} Raid')   
@@ -109,9 +110,6 @@ class LegionRaidCreation(discord.ui.View):
         await interaction.response.defer()
         await interaction.delete_original_response()
 
-#TODO joinen funktioniert, leaven hingegn hat manchmal anomalien und löscht falschen benutzer
-# have to supbcalss selects for better usability and get acces to user interacting 
-# that might help: https://stackoverflow.com/questions/75575015/discord-py-multiple-select-menu-interactions-get-mixed-up
 class JoinRaid(discord.ui.View):
 
     def __init__(self, db):
@@ -335,7 +333,6 @@ class CharSelect(discord.ui.Select):
                 mc += 1
                 supp_count = e_fields[4].get('value')
                 s_count = int(supp_count) + 1
-                #self.view.orgview.suppvalue.append(f'{selectedChar} - {interaction.user.name}\n')
                 self.view.orgview.db.update_group_mc(self.view.g_id, mc)
                 self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                 supp_string = e_fields[7].get('value')
@@ -357,10 +354,6 @@ class CharSelect(discord.ui.Select):
             name = check['char_name']
             await interaction.response.send_message(f'you are already in this group with {name}', ephemeral=True)
 
-        
-
-        #self.view.add_item(JoinButton(selectedChar))          
-        #await interaction.response.edit_message(view=self.view)
 
 class RaidSelect(discord.ui.Select):
     def __init__(self, parentview) -> None:
@@ -402,78 +395,6 @@ class RaidModeSelect(discord.ui.Select):
         createButton.disabled = False
         self.disabled = True
         await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
-
-
-
-class JoinButton(discord.ui.Button):
-    def __init__(self, selection):
-        self.char = selection
-
-        super().__init__(
-            style=discord.ButtonStyle.green, 
-            label='DPS', 
-            disabled=False, 
-            custom_id='join_dps', 
-        )
-    
-    async def callback(self, interaction: discord.Interaction):
-        threadMeembers = await self.view.thread.fetch_members()
-        char_select = self.view.get_item('character_selection')
-        #TODO: access view.orgview and get group id
-
-        group_result = self.view.orgview.db.get_group(self.view.g_id)
-
-        logger.debug(f'Group: {group_result.keys()}')
-
-        if any(m.id == interaction.user.id for m in threadMeembers):
-            await interaction.response.send_message('you are already in this group', ephemeral=True)
-        else:
-            self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, self.char)
-            self.view.orgview.dpsvalue.append(f'{self.char} - {interaction.user.name}\n')
-            #char_select.placeholder = 'Choose a Character'
-            n = ''.join(self.view.orgview.dpsvalue)
-            self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=self.view.orgview.dps)
-            self.view.orgview.embed.set_field_at(6, name='DPS', value=f"""{n}""")
-            #testdict = self.embed.to_dict()
-            #print('test dict: ', testdict)
-            self.view.orgview.user_chars.clear() #clear list
-            await self.view.thread.add_user(interaction.user)
-            #self.view.remove_item(char_select)
-            #self.view.remove_item(self)
-            #await self.view.orgview.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
-            #await self.view.message.edit(embed=self.view.orgview.embed, view=self.view.orgview)
-            logger.debug(f'VIEW - {self.view.message}')
-            await interaction.response.defer()
-            await interaction.delete_original_response()
-
-
-
-
-
-
-
-
-
-#------------- leave section, embed aktuallisierung macht probleme
-#
-#{
-#    'author': {'name': 'MrXilef#8048'}, 
-#    'fields': [
-#        {'name': 'Date/Time:', 'value': 'now', 'inline': True}, 
-#        {'name': 'Raid:', 'value': 'Brelshaza Normal', 'inline': True}, 
-#        {'name': 'Raid Mode:', 'value': 'Gate 1&2, 1490', 'inline': True}, 
-#        {'name': 'DPS:', 'value': '1', 'inline': True}, 
-#        {'name': 'SUPP: ', 'value': '0', 'inline': True}, 
-#        {'name': '\xad', 'value': '\xad', 'inline': True}, 
-#        {'name': 'DPS', 'value': 'Destroyer - MrXilef#8048\n', 'inline': True}, 
-#        {'name': 'SUPP', 'value': '\xad', 'inline': True}
-#    ], 
-#    'color': 3447003, 'type': 'rich', 'title': 'test'
-#}
-
-
-#TODO: improve editing of the embed
-# --> work with embed.to_dict / embed.from_dict
 
 
 
@@ -643,18 +564,26 @@ def run():
 
         for i in data['raids']:
             code = db.add_raids(i['name'], i['modes'], i['member'], i['rtype'])
-            if code == 0:
+            if code != 0:
                 if i['rtype'] == 'Legion' or i['rtype'] == 'Abyssal':
                     fname_lower = i['name'].lower()
                     file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
                     attachment = await ctx.send('Uploaded image', file=file)
+                    #await asyncio.sleep(2)
                     url = attachment.attachments[0].url
                     db.save_image(fname_lower, url)
 
         raid_file.close()
 
-        #await ctx.respond(f'added the new Raids', ephemeral=True, delete_after=20)      
+        await ctx.send(f'added the new Raids', delete_after=20)      
         set_Raids(db)
+    
+    @bot.slash_command(name="upload_image", description="Upload specific raid image")
+    async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)):
+        file = discord.File(f'ressources/{name}.png', filename=f'{name}.png')
+        attachment = await ctx.send('Uploaded image', file=file)
+        url = attachment.attachments[0].url
+        db.save_image(name, url)
 
     @bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
     async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)):
