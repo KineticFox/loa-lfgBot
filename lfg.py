@@ -638,8 +638,31 @@ def run():
     
     @bot.slash_command(name="sql")
     async def run_command(ctx, command:discord.Option(str, 'command', required=True)):
-        res = db.raw_SQL(command)
-        await ctx.respond(res, ephemeral=True, delete_after=20)
+        if ctx.author.name == 'mr.xilef':
+            res = db.raw_SQL(command)
+            await ctx.respond(res, ephemeral=True, delete_after=20)
+        else:
+            await ctx.respond(f'tztztz, you are not allowed to use this command', ephemeral=True, delete_after=20)
+    
+    @bot.slash_command(name="help")
+    async def help(ctx):
+
+        text="""
+                1. ```/register_user``` -- registers your Discord-User to the Bot and Database\n
+                2. ```/register_char``` -- registers one of many of your chars\n
+                3. Now you are good to go and you can join and create Groups/Raids\n
+                - with ```/show_chars``` you can get an overview of your registered chars\n
+                - with ```/lfg``` you create a looking-for-group lobby\n
+                """
+
+        embed = discord.Embed(
+            title='Help section for loabot',
+            color=discord.Colour.dark_orange(),
+        )
+        embed.add_field(name='User-guide',value=text)
+
+        await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
+
             
 
     
