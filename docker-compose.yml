@@ -1,9 +1,10 @@
 version: '3'
 services:
-  bot:
-    #build: .
-    image: python:latest
-    workingdir: /
-    command: bash -c "pip3 install -r requirements.txt && python3 lfg.py"
+  loa-bot:
+    build: .
+    #image: python:latest
+    #workingdir: /
+    #command: bash -c "pip3 install -r requirements.txt && python3 lfg.py"
     volumes:
-      - ./bot-data:/data
+      - ~/docker-files/bot-data:/data
+      - ~/docker-diles/bot-ressources:/ressources
