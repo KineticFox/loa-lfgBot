@@ -6,5 +6,10 @@ services:
     #workingdir: /
     #command: bash -c "pip3 install -r requirements.txt && python3 lfg.py"
     volumes:
-      - ~/docker-files/bot-data:/data
-      - ~/docker-diles/bot-ressources:/ressources
+      - bot-data:/data
+      - bot-ressources:/ressources
+
+volumes:
+  bot-data:
+    
+  bot-ressources:
