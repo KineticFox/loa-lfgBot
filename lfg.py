@@ -13,7 +13,7 @@ import logging
 
 
 logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 formater = logging.Formatter('%(name)s:%(levelname)s: %(msg)s')
 handler.setFormatter(formater)
