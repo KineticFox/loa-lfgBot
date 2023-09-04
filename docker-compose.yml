@@ -11,5 +11,6 @@ services:
 
 volumes:
   bot-data:
-    
+    external: True
   bot-ressources:
+    external: True
