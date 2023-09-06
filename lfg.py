@@ -123,7 +123,7 @@ class JoinRaid(discord.ui.View):
         self.suppvalue= []
         self.disabled = True
         self.db = db
-        self.user_chars = [] #TODO: clear list after join [x]
+        #self.user_chars = [] #TODO: clear list after join [x]
         self.parentview = self
         self.embed = None
         self.group_id = None
@@ -143,25 +143,27 @@ class JoinRaid(discord.ui.View):
         group_id = fields[8].get('value') #groupd tabel id
         thread_id = None
         thread = None
-        temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
-        for d in temp_char_list:
-            self.user_chars.append(d.get('char_name'))
 
-        panel = discord.Embed(
-            title='Please choose your Character and as which Role you want to join the raid.',
-            color=discord.Colour.blue(),
-        )
 
-        #self.add_item(CharSelect(self.user_chars))
-        chanell = interaction.guild.get_channel(interaction.channel.id)
-        allThreads = chanell.threads
-        for t in allThreads:
-            if t.name == self.embed.title:
-                thread_id = t.id
-        thread = chanell.get_thread(thread_id)
-        message = interaction.message.id
-        await interaction.response.edit_message(view=self)
-        await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, group_id, thread, message), embed=panel)
+        if result is None:
+            await interaction.response.send_message('Please register your user and chars first!',  ephemeral=True)
+        
+        else:
+
+            panel = discord.Embed(
+                title='Please choose your Character and as which Role you want to join the raid.',
+                color=discord.Colour.blue(),
+            )
+
+            chanell = interaction.guild.get_channel(interaction.channel.id)
+            allThreads = chanell.threads
+            for t in allThreads:
+                if t.name == self.embed.title:
+                    thread_id = t.id
+            thread = chanell.get_thread(thread_id)
+            message = interaction.message.id
+            await interaction.response.edit_message(view=self)
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, group_id, thread, message, user), embed=panel)
 
   
     @discord.ui.button(
@@ -269,17 +271,29 @@ class JoinRaid(discord.ui.View):
 #--------------------- Subclassed view elements -----------------------------------#
 
 class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview, group_id, thread, message):
+    def __init__(self, orgview, group_id, thread, message, user_name):
         self.orgview = orgview
-        self.user_chars = self.orgview.user_chars
+        self.user_chars = []
         self.g_id = group_id
         self.thread = thread
         self.message = message
+        self.username = user_name
+        def setup_chars():
+            result = self.orgview.db.select_chars(self.username)
+            temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
+            for d in temp_char_list:
+                self.user_chars.append(d.get('char_name'))
+
+
+        setup_chars()
         super().__init__(
             timeout=120, 
             disable_on_timeout=True
             )
+        
         self.add_item(CharSelect(self.user_chars))
+    
+    
 
 class CharSelect(discord.ui.Select):
     def __init__(self, optionlist) -> None:
@@ -340,7 +354,7 @@ class CharSelect(discord.ui.Select):
                 new_supp_string = supp_string + f'\n{selectedChar} - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
-            self.view.orgview.user_chars.clear() #clear list
+            #self.view.orgview.user_chars.clear() #clear list
 
             await self.view.thread.add_user(interaction.user)
 
@@ -381,6 +395,7 @@ class RaidSelect(discord.ui.Select):
         def set_options():
             list = []
             #print('legin creation ',self.parentview.raids['Valtan'])
+
             for key, value in self.parentview.raids.items():
                 if value.get('type') == self.raid_type:
                     list.append(discord.SelectOption(label=key, description=value.get('type')))
