@@ -311,12 +311,14 @@ class CharSelect(discord.ui.Select):
         self.placeholder = self.values[0]
 
         #get selected char from db for role
-        print(selectedChar)
         role = self.view.orgview.db.get_charRole(selectedChar)
         #get raid id, user id
 
         #check if user is already connected to this raid id --> raidmember table
         check = self.view.orgview.db.raidmember_check(self.view.g_id, interaction.user.name)
+
+        #disable select menu to prevent unintended char switching
+        self.disabled = True
 
         if(check is None):
             self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, selectedChar)
