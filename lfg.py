@@ -214,6 +214,9 @@ class JoinRaid(discord.ui.View):
             group_result = self.db.get_group(group_id)
             mc = group_result['raid_mc']
 
+            ilvl = self.db.get_char_ilvl(char)
+            char_ilvl = ilvl['ilvl']
+
             if role == 'DPS':
                 mc -= 1
                 dps_count = fields[3].get('value')
@@ -221,7 +224,7 @@ class JoinRaid(discord.ui.View):
                 self.db.update_group_mc(group_id, mc)
                 self.dpsvalue.clear()
                 dps_string = fields[6].get('value')
-                new_dps_string = dps_string.replace(f'{char} - {interaction.user.name}', '')
+                new_dps_string = dps_string.replace(f'{char} ({char_ilvl}) - {interaction.user.name}', '')
                 embed.set_field_at(6, name='DPS', value=new_dps_string)
                 embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                 self.db.remove_groupmember(interaction.user.name, group_id)
@@ -233,7 +236,7 @@ class JoinRaid(discord.ui.View):
                 self.db.update_group_mc(group_id, mc)
                 self.suppvalue.clear()
                 supp_string = fields[7].get('value')
-                new_supp_string = supp_string.replace(f'{char} - {interaction.user.name}', '')
+                new_supp_string = supp_string.replace(f'{char} ({char_ilvl}) - {interaction.user.name}', '')
                 embed.set_field_at(7, name='SUPP', value=new_supp_string)
                 embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
 
@@ -335,6 +338,11 @@ class CharSelect(discord.ui.Select):
             message = self.view.orgview.db.get_message(self.view.g_id)
             m_id = message['m_id']
 
+            #get char ilvl
+            ilvl = self.view.orgview.db.get_char_ilvl(selectedChar)
+            char_ilvl = ilvl['ilvl']
+
+
             e_dict = self.view.orgview.embed.to_dict()
             e_fields = e_dict.get('fields')
 
@@ -347,7 +355,7 @@ class CharSelect(discord.ui.Select):
                 self.view.orgview.db.update_group_mc(self.view.g_id, mc)
                 self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                 dps_string = e_fields[6].get('value')
-                new_dps_string = dps_string + f'\n{selectedChar} - {interaction.user.name}\n'
+                new_dps_string = dps_string + f'\n{selectedChar} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
 
             else:
@@ -357,7 +365,7 @@ class CharSelect(discord.ui.Select):
                 self.view.orgview.db.update_group_mc(self.view.g_id, mc)
                 self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                 supp_string = e_fields[7].get('value')
-                new_supp_string = supp_string + f'\n{selectedChar} - {interaction.user.name}\n'
+                new_supp_string = supp_string + f'\n{selectedChar} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
             #self.view.orgview.user_chars.clear() #clear list

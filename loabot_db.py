@@ -45,6 +45,13 @@ class LBDB:
         except sqlite3.Error as e:
             logger.warning(f'Database get chars Error - {e}')
             return ['error']
+        
+    def get_char_ilvl(self, name):
+        try:
+            res = self.cur.execute('SELECT ilvl FROM chars WHERE char_name=?', [name]).fetchone()
+            return res
+        except sqlite3.Error as e:
+            logger.warning(f'DB get ilvl Error - {e}')
 
     def get_group(self, id):
         try:
