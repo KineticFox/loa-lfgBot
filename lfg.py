@@ -144,9 +144,11 @@ class JoinRaid(discord.ui.View):
         thread_id = None
         thread = None
 
-
         if result is None:
             await interaction.response.send_message('Please register your user and chars first!',  ephemeral=True)
+        
+        elif len(result) == 0:
+            await interaction.response.send_message('No registered chars found. Please register your chars first!',  ephemeral=True)
         
         else:
 
@@ -201,7 +203,6 @@ class JoinRaid(discord.ui.View):
         if char_result is None:
             await interaction.response.send_message('you can not leave, you are not member of the party', ephemeral=True)
         else:
-
             char = char_result['char_name']
             #get role of user
             role_result = self.db.get_charRole(char)
@@ -287,7 +288,7 @@ class JoinDialogue(discord.ui.View):
 
         setup_chars()
         super().__init__(
-            timeout=120, 
+            timeout=40, 
             disable_on_timeout=True
             )
         
@@ -311,12 +312,14 @@ class CharSelect(discord.ui.Select):
         self.placeholder = self.values[0]
 
         #get selected char from db for role
-        print(selectedChar)
         role = self.view.orgview.db.get_charRole(selectedChar)
         #get raid id, user id
 
         #check if user is already connected to this raid id --> raidmember table
         check = self.view.orgview.db.raidmember_check(self.view.g_id, interaction.user.name)
+
+        #disable select menu to prevent unintended char switching
+        self.disabled = True
 
         if(check is None):
             self.view.orgview.db.add_groupmember(self.view.g_id, interaction.user.name, selectedChar)
@@ -362,8 +365,7 @@ class CharSelect(discord.ui.Select):
             channel = interaction.guild.get_channel(interaction.channel.id)
             m = await channel.fetch_message(m_id)
             await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-            #await interaction.response.defer()
-            #await interaction.delete_original_response()
+            await interaction.delete_original_response()
 
         else:
             name = check['char_name']
@@ -551,9 +553,9 @@ def run():
         result = db.add_chars(char, cl, ctx.author.name, ilvl, role)
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
-    @bot.slash_command(name="update_char", description="updates the i-lvl of given char in the DB")
-    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True), ilvl: discord.Option(int, 'ilvl', required=True)):
-        result = db.update_chars(charname, ilvl)
+    @bot.slash_command(name="update_char", description="updates the i-lvl of given char in the DB or deletes the given char")
+    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes'], default='no')):
+        result = db.update_chars(charname, ilvl, delete)
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="show_chars", description="shows all chars of the user or if no explicit user is given shows your chars")

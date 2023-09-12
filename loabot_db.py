@@ -40,7 +40,7 @@ class LBDB:
 
     def get_chars(self, user):
         try:
-            res = self.cur.execute(f'SELECT char_name, class, ilvl FROM chars WHERE user_id=(SELECT id FROM user where name="{user}")')
+            res = self.cur.execute(f'SELECT char_name, class, ilvl FROM chars WHERE user_id=(SELECT id FROM user where name=?)', [user]) #"{user}"
             return res.fetchall()
         except sqlite3.Error as e:
             logger.warning(f'Database get chars Error - {e}')
@@ -48,34 +48,34 @@ class LBDB:
 
     def get_group(self, id):
         try:
-            res = self.cur.execute(f'SELECT * FROM groups WHERE id={id}')
+            res = self.cur.execute(f'SELECT * FROM groups WHERE id=?', [id]) #{id}
             return res.fetchone()
         except sqlite3.Error as e:
             logger.warning(f'Database get group Error - {e}')
 
     def get_raidtype(self, name):
         try:
-            res = self.cur.execute(f'SELECT member,type FROM raids WHERE name="{name}"')
+            res = self.cur.execute(f'SELECT member,type FROM raids WHERE name=?', [name]) #"{name}"
             return res.fetchone()
         except sqlite3.Error as e:
             logger.warning(f'Database raid type Error - {e}')
 
     def update_group_mc(self, id, count):
         try:
-            self.cur.execute(f'UPDATE groups SET raid_mc={count} WHERE id={id}')
+            self.cur.execute(f'UPDATE groups SET raid_mc=? WHERE id=?', [count, id]) #{count} {id}
         except sqlite3.Error as e:
             logger.warning(f'DB update mc Error - {e}')
     
     def raidmember_check(self, raidid, username):
         try:
-            res = self.cur.execute(f'SELECT char_name FROM raidmember WHERE raid_id="{raidid}" AND user_id=(SELECT id FROM user WHERE name="{username}")').fetchone()
+            res = self.cur.execute(f'SELECT char_name FROM raidmember WHERE raid_id=? AND user_id=(SELECT id FROM user WHERE name=?)', [raidid, username]).fetchone() #"{raidid}" "{username}"
             return res
         except sqlite3.Error as e:
             logger.warning(f'raidmember check Error: {e}')
 
     def add_groupmember(self, raid_id, user_name, charname):
         try:
-            self.cur.execute(f'INSERT INTO raidmember(raid_id, user_id, char_name) Values("{raid_id}", (SELECT id FROM user WHERE name="{user_name}"), "{charname}")')
+            self.cur.execute(f'INSERT INTO raidmember(raid_id, user_id, char_name) Values(?, (SELECT id FROM user WHERE name=?), ?)', [raid_id, user_name, charname]) #"{raid_id}" "{user_name}" "{charname}"
             self.con.commit()
             #(SELECT id FROM user WHERE name="{user}")
         except sqlite3.Error as e:
@@ -83,16 +83,21 @@ class LBDB:
 
     def remove_groupmember(self, name, raidid):
         try:
-            self.cur.execute(f'DELETE FROM raidmember WHERE raid_id={raidid} AND user_id=(SELECT id FROM user WHERE name="{name}")')
+            self.cur.execute(f'DELETE FROM raidmember WHERE raid_id=? AND user_id=(SELECT id FROM user WHERE name=?)', [raidid, name]) #{raidid} "{name}"
             self.con.commit()
         except sqlite3.Error as e:
             logger.warning(f'Database remove Groupmember Error: {e}')
 
-    def update_chars(self, charname, ilvl):
+    def update_chars(self, charname, ilvl, delete:None):
         try:
-            self.cur.execute(f'UPDATE chars SET ilvl={ilvl} WHERE char_name="{charname}"')
-            self.con.commit()
-            return 'Updated char'
+            if delete == 'no':
+                self.cur.execute(f'UPDATE chars SET ilvl=? WHERE char_name=?', [ilvl, charname]) #{ilvl} "{charname}"
+                self.con.commit()
+                return 'Updated char'
+            elif delete == 'yes':
+                self.cur.execute(f'DELETE FROM chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
+                self.con.commit()
+                return 'deleted char'
         except sqlite3.Error as e:
             logger.warning(f'Databse update char Error - {e}')
             return f'Databse update char Error - {e}'
@@ -114,10 +119,10 @@ class LBDB:
 
     def save_image(self, raid, url):
         try:
-            result = self.cur.execute(f'SELECT * FROM images WHERE raid="{raid}"').fetchone()
+            result = self.cur.execute(f'SELECT * FROM images WHERE raid=?', [raid]).fetchone() #"{raid}"
 
             if result is None:
-                self.cur.execute(f'INSERT INTO images(raid, url) VALUES("{raid}", "{url}")')
+                self.cur.execute(f'INSERT INTO images(raid, url) VALUES(?, ?)', [raid, url]) # "{raid}" "{url}"
                 self.con.commit()
             else:
                 logger.debug(f'Images for {raid} already exists')
@@ -127,7 +132,7 @@ class LBDB:
 
     def get_image_url(self, raid):
         try:
-            res = self.cur.execute(f'SELECT url FROM images WHERE raid="{raid}"').fetchone()
+            res = self.cur.execute(f'SELECT url FROM images WHERE raid=?', [raid]).fetchone()# "{raid}"
             return res
         except sqlite3.Error as e:
             logger.warning(f'Database get image Error: {e}')
@@ -136,7 +141,7 @@ class LBDB:
 
     def get_message(self, raid_id):
         try:
-            res = self.cur.execute(f'Select * FROM messages WHERE c_id={raid_id}')
+            res = self.cur.execute(f'Select * FROM messages WHERE c_id=?', [raid_id]) #{raid_id}
             return res.fetchone()
         except sqlite3.Error as e:
             logger.warning(f'Database get message Error - {e}')
@@ -144,13 +149,13 @@ class LBDB:
 
     def add_user(self, user):
         try:
-            row = self.cur.execute(f'SELECT name FROM user WHERE name="{user}"')
+            row = self.cur.execute(f'SELECT name FROM user WHERE name=?', [user]) #"{user}"
             res = row.fetchall()
             if len(res) != 0:
                 logger.info(f'User {user} already exists in DB')
                 return f'User {user} already exists in DB'
             else:
-                self.cur.execute(f'INSERT INTO user(name) VALUES ("{user}")')
+                self.cur.execute(f'INSERT INTO user(name) VALUES (?)', [user]) #"{user}"
                 self.con.commit()
                 return f'added your DC-User "{user}" to the DB'
         except sqlite3.Error as e:
@@ -168,7 +173,7 @@ class LBDB:
     def add_raids(self, name, modes, member, rtype):
         # modes  must be in format '{"modes":["Normal Mode, 1370","...", ...]}'
         try:
-            result = self.cur.execute(f'SELECT * FROM raids WHERE name="{name}"').fetchone()
+            result = self.cur.execute(f'SELECT * FROM raids WHERE name=?', [name]).fetchone() #"{name}"
             if result is None:
                 self.cur.execute(f'INSERT INTO raids(name, modes, member, type) VALUES (?, ?, ?, ?)', [name, modes, member, rtype])
                 self.con.commit()
@@ -182,15 +187,15 @@ class LBDB:
     
     def add_chars(self, chars, cl, user, ilvl, role):
         try:
-            row = self.cur.execute(f'SELECT char_name FROM chars WHERE char_name="{chars}"')
+            row = self.cur.execute(f'SELECT char_name FROM chars WHERE char_name=?', [chars]) #"{chars}"
             res = row.fetchall()
             if len(res) != 0:
                 logger.info(f'Char {chars} already exists in DB')
                 return f'Char {chars} already exists in DB'
             else:
-                self.cur.execute(f'INSERT INTO chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM user WHERE name="{user}"), "{chars}", "{cl}","{ilvl}", "{role}")')
+                self.cur.execute(f'INSERT INTO chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM user WHERE name=?), ?, ?, ?, ?)', [user, chars, cl, ilvl, role]) #"{user}" "{chars}" "{cl}" "{ilvl}" "{role}"
                 self.con.commit()
-                return f'Add your char {chars} to the DB'
+                return f'Added your char {chars} to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
             return f'add char DB error: {e}'
@@ -206,8 +211,8 @@ class LBDB:
     
     def delete_raids(self, id):
         try:
-            self.cur.execute(f'DELETE FROM groups WHERE id={id}')
-            self.cur.execute(f'DELETE FROM raidmember WHERE raid_id={id}')
+            self.cur.execute(f'DELETE FROM groups WHERE id=?', [id]) #{id}
+            self.cur.execute(f'DELETE FROM raidmember WHERE raid_id=?', [id]) #{id}
             self.con.commit()
         except sqlite3.Error as e:
             logger.warning(f'Delete Raid error: {e}')
@@ -227,7 +232,7 @@ class LBDB:
     
     def select_chars(self, username):
         try:
-            res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user WHERE name="{username}")').fetchall()
+            res = self.cur.execute(f'SELECT char_name FROM chars WHERE user_id=(SELECT id FROM user WHERE name=?)', [username]).fetchall() #"{username}"
             return res
         except sqlite3.Error as e:
             logger.warning(f'Select chars table Error: {e}')
@@ -235,7 +240,7 @@ class LBDB:
     
     def get_charRole(self, charname):
         try:
-            res = self.cur.execute(f'SELECT role FROM chars WHERE char_name="{charname}"').fetchone()
+            res = self.cur.execute(f'SELECT role FROM chars WHERE char_name=?', [charname]).fetchone() #"{charname}"
             return res
         except sqlite3.Error as e:
             logger.warning(f'get char role Error: {e}')
