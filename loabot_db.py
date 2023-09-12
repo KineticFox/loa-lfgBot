@@ -187,6 +187,7 @@ class LBDB:
     
     def add_chars(self, chars, cl, user, ilvl, role):
         try:
+            
             row = self.cur.execute(f'SELECT char_name FROM chars WHERE char_name=?', [chars]) #"{chars}"
             res = row.fetchall()
             if len(res) != 0:
@@ -198,7 +199,7 @@ class LBDB:
                 return f'Added your char {chars} to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
-            return f'add char DB error: {e}'
+            return f'Please register your user first'
 
     def store_group(self, title, raid, raid_mode, date, dc_id, mc=0):
 
