@@ -155,7 +155,6 @@ class JoinRaid(discord.ui.View):
             char = join_check['char_name']
             await interaction.respond.send_message(f'You are already in this raid with {char}', ephermeral=True)
         else:
-
             panel = discord.Embed(
                 title='Please choose your Character and as which Role you want to join the raid.',
                 color=discord.Colour.blue(),

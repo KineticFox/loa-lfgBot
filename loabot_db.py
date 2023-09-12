@@ -187,16 +187,22 @@ class LBDB:
     
     def add_chars(self, chars, cl, user, ilvl, role):
         try:
-            
-            row = self.cur.execute(f'SELECT char_name FROM chars WHERE char_name=?', [chars]) #"{chars}"
-            res = row.fetchall()
-            if len(res) != 0:
-                logger.info(f'Char {chars} already exists in DB')
-                return f'Char {chars} already exists in DB'
-            else:
+            user_check = self.cur.execute('SELECT id FROM user WHERE name=?', [user]).fetchone()
+            if user_check is None or len(user_check) == 0:
+                self.add_user(user)
                 self.cur.execute(f'INSERT INTO chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM user WHERE name=?), ?, ?, ?, ?)', [user, chars, cl, ilvl, role]) #"{user}" "{chars}" "{cl}" "{ilvl}" "{role}"
                 self.con.commit()
                 return f'Added your char {chars} to the DB'
+            else:                
+                row = self.cur.execute(f'SELECT char_name FROM chars WHERE char_name=?', [chars]) #"{chars}"
+                res = row.fetchall()
+                if len(res) != 0:
+                    logger.info(f'Char {chars} already exists in DB')
+                    return f'Char {chars} already exists in DB'
+                else:
+                    self.cur.execute(f'INSERT INTO chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM user WHERE name=?), ?, ?, ?, ?)', [user, chars, cl, ilvl, role]) #"{user}" "{chars}" "{cl}" "{ilvl}" "{role}"
+                    self.con.commit()
+                    return f'Added your char {chars} to the DB'
         except sqlite3.Error as e:
             logger.warning(f'Add user insertion error: {e}')
             return f'Please register your user first'
