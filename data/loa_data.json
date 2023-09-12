@@ -1,5 +1,5 @@
 {
-    "classes": ["Artillerist", "Sorceress", "Painter", "Destroyer", "Berserker", "Gunlancer", "Paladin", "Slayer", "Arcanist", "Bard", "Summoner", "Glaivier", "Scrapper", "Soulfist", "Striker", "Wardancer", "Deadey", "Gunslinger", "Machinist", "Sharpshooter", "Deathblade", "Reaper", "Shadowhunter"],
+    "classes": ["Artillerist", "Sorceress", "Painter", "Destroyer", "Berserker", "Gunlancer", "Paladin", "Slayer", "Arcanist", "Bard", "Summoner", "Glaivier", "Scrapper", "Soulfist", "Striker", "Wardancer", "Deadeye", "Gunslinger", "Machinist", "Sharpshooter", "Deathblade", "Reaper", "Shadowhunter"],
     "raids": [
         {"name": "Valtan", "modes":"1415 Normal, Hard 1445", "member":8, "rtype":"Legion"},
         {"name": "Vykas", "modes":"1430 Normal, Hard 1460", "member":8, "rtype":"Legion"},
