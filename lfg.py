@@ -144,12 +144,16 @@ class JoinRaid(discord.ui.View):
         thread_id = None
         thread = None
 
+        #check if user is already connected to this raid id --> raidmember table
+        join_check = self.view.orgview.db.raidmember_check(group_id, interaction.user.name)
+
         if result is None:
-            await interaction.response.send_message('Please register your user and chars first!',  ephemeral=True)
-        
+            await interaction.response.send_message('Please register your user and chars first!',  ephemeral=True)        
         elif len(result) == 0:
             await interaction.response.send_message('No registered chars found. Please register your chars first!',  ephemeral=True)
-        
+        elif join_check is not None:
+            char = join_check['char_name']
+            await interaction.respond.send_message(f'You are already in this raid with {char}', ephermeral=True)
         else:
 
             panel = discord.Embed(
