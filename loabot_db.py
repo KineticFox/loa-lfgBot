@@ -186,11 +186,28 @@ class LBDB:
                 self.con.commit()
                 return 1
             else:
-                logger.debug(f'Raid {name} already exists')
+                logger.debug(f'Raid {name} already exists, updating instead')
+                self.cur.execute(f'UPDATE raids SET modes=?, member=?, type=? WHERE name=? (name, modes, member, type) VALUES (?, ?, ?, ?)', [modes, member, rtype, name])
+                self.con.commit()
                 return 0
 
         except sqlite3.Error as e:
             logger.warning(f'Add raid insertion error: {e}')
+
+    
+    def update_raid(self, name, modes, member, rtype):
+        try:
+            result = self.cur.execute(f'SELECT * FROM raids WHERE name=?', [name]).fetchone() #"{name}"
+            if result is None:
+                self.cur.execute(f'UPDATE raids SET modes=?, member=?, type=? WHERE name=? (name, modes, member, type) VALUES (?, ?, ?, ?)', [modes, member, rtype, name])
+                self.con.commit()
+                return 1
+            else:
+                logger.debug(f'Raid {name} already exists')
+                return 0
+
+        except sqlite3.Error as e:
+            logger.warning(f'Update raid insertion error: {e}')
     
     def add_chars(self, chars, cl, user, ilvl, role):
         try:
