@@ -186,7 +186,9 @@ class LBDB:
                 self.con.commit()
                 return 1
             else:
-                logger.debug(f'Raid {name} already exists')
+                logger.debug(f'Raid {name} already exists, updating instead')
+                self.cur.execute(f'UPDATE raids SET modes=?, member=?, type=? WHERE name=? (name, modes, member, type) VALUES (?, ?, ?, ?)', [modes, member, rtype, name])
+                self.con.commit()
                 return 0
 
         except sqlite3.Error as e:
