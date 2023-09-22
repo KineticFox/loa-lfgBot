@@ -600,7 +600,7 @@ def run(bot, db):
             panel.add_field(name='Name', value=e_names)
             panel.add_field(name='Class', value=e_class)
             panel.add_field(name='ilvl', value=e_ilvl)
-            await ctx.respond(f'Characters - {user}', embed=panel, ephemeral=False)
+            await ctx.respond(f'Characters - {user}', embed=panel, ephemeral=True)
                 
         else:    
             result = db.get_chars(ctx.author.name)
@@ -617,7 +617,7 @@ def run(bot, db):
             panel.add_field(name='Name', value=e_names)
             panel.add_field(name='Class', value=e_class)
             panel.add_field(name='ilvl', value=e_ilvl)
-            await ctx.respond(f'Characters - {ctx.author.name}', embed=panel, ephemeral=False)
+            await ctx.respond(f'Characters - {ctx.author.name}', embed=panel, ephemeral=True)
 
     @bot.slash_command(name="update_raids", description="Updates Raids")
     async def db_updateraids(ctx):
