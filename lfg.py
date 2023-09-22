@@ -102,7 +102,8 @@ class LegionRaidCreation(discord.ui.View):
         thread = await m.create_thread(name=f"{embed.title}")#, type=discord.ChannelType.public_thread)
         thread_id = thread.id
         
-        raid_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
+        r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
+        raid_id = r_id['id']
         self.db.add_message(m.id, raid_id)
         embed.add_field(name='ID', value=raid_id)
 
@@ -145,7 +146,7 @@ class JoinRaid(discord.ui.View):
         thread = None
 
         #check if user is already connected to this raid id --> raidmember table
-        join_check = self.view.orgview.db.raidmember_check(group_id, interaction.user.name)
+        join_check = self.db.raidmember_check(group_id, interaction.user.name)
 
         if result is None:
             await interaction.response.send_message('Please register your user and chars first!',  ephemeral=True)        
@@ -586,12 +587,20 @@ def run(bot, db):
         ilvl =[]
 
         if user:
-            result = db.get_chars(ctx.author.name)
+            result = db.get_chars(user)
             #chardicts = [{k: item[k] for k in item.keys()} for item in result]
             for c in result:
                 names.append(c.get('char_name'))
                 classes.append(c.get('class'))
                 ilvl.append(c.get('ilvl'))
+            e_names = "\n".join(str(name) for name in names)
+            e_class = "\n".join(str(c) for c in classes)
+            e_ilvl = "\n".join(str(lvl) for lvl in ilvl)
+
+            panel.add_field(name='Name', value=e_names)
+            panel.add_field(name='Class', value=e_class)
+            panel.add_field(name='ilvl', value=e_ilvl)
+            await ctx.respond(f'Characters - {user}', embed=panel, ephemeral=False)
                 
         else:    
             result = db.get_chars(ctx.author.name)
@@ -601,14 +610,14 @@ def run(bot, db):
                 classes.append(c.get('class'))
                 ilvl.append(c.get('ilvl'))
 
-        e_names = "\n".join(str(name) for name in names)
-        e_class = "\n".join(str(c) for c in classes)
-        e_ilvl = "\n".join(str(lvl) for lvl in ilvl)
+            e_names = "\n".join(str(name) for name in names)
+            e_class = "\n".join(str(c) for c in classes)
+            e_ilvl = "\n".join(str(lvl) for lvl in ilvl)
 
-        panel.add_field(name='Name', value=e_names)
-        panel.add_field(name='Class', value=e_class)
-        panel.add_field(name='ilvl', value=e_ilvl)
-        await ctx.respond(f'Characters - {ctx.author.name}', embed=panel, ephemeral=False)
+            panel.add_field(name='Name', value=e_names)
+            panel.add_field(name='Class', value=e_class)
+            panel.add_field(name='ilvl', value=e_ilvl)
+            await ctx.respond(f'Characters - {ctx.author.name}', embed=panel, ephemeral=False)
 
     @bot.slash_command(name="update_raids", description="Updates Raids")
     async def db_updateraids(ctx):
