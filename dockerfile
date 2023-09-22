@@ -4,7 +4,7 @@ WORKDIR /
 
 COPY lfg.py ./
 COPY loabot_db.py ./
-COPY .env ./
+#COPY .env ./
 COPY requirements.txt ./
 RUN mkdir /data
 RUN mkdir /ressources
