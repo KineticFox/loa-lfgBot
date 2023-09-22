@@ -242,7 +242,7 @@ class LBDB:
 
         try:
             self.cur.execute(f'INSERT INTO groups(raid_title, raid, raid_mode, raid_mc, date, dc_id) VALUES(?, ?, ?, ?, ?, ?)', [title, raid, raid_mode, mc, date, dc_id])
-            self.cur.execute('SELECT LAST_INSERT_ID()')
+            self.cur.execute('SELECT id FROM groups WHERE dc_id=?', [dc_id])
             res = self.cur.fetchone()
             return res[0]
         except mariadb.Error as e:
