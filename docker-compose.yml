@@ -5,7 +5,7 @@ services:
     #image: python:latest
     #workingdir: /
     #command: bash -c "pip3 install -r requirements.txt && python3 lfg.py"
-    enviroment:
+    environment:
       - TOKEN=
       - DB_USER=
       - DB_PW=
