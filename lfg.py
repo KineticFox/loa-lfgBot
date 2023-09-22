@@ -287,8 +287,8 @@ class JoinDialogue(discord.ui.View):
         self.username = user_name
         def setup_chars():
             result = self.orgview.db.select_chars(self.username)
-            temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
-            for d in temp_char_list:
+            #temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
+            for d in result:
                 self.user_chars.append(d.get('char_name'))
 
 
@@ -456,8 +456,8 @@ raid_type = ['Legion', 'Guardian', 'Abyssal']
 
 def set_Raids(db):
         result = db.get_raids()
-        raiddicts = [{k: item[k] for k in item.keys()} for item in result]
-        for r in raiddicts:
+        #raiddicts = [{k: item[k] for k in item.keys()} for item in result]
+        for r in result:
             modes = r.get('modes')
             modearray = modes.split(',')
             rdata = {'type':r.get('type'), 'modes':modearray, 'player':r.get('member')}
@@ -484,10 +484,9 @@ async def raid_list_init(db, context):
 
 async def persistent_setup(db, bot):
     result = db.get_messages()
-    m_ids = [{k: item[k] for k in item.keys()} for item in result]
-    logger.debug(f'Message IDs: {m_ids}')
+    logger.debug(f'Message IDs: {result}')
     
-    for id in m_ids:
+    for id in result:
         m_id = id.get('m_id')
         c_id = id.get('c_id')
         chanell = bot.get_channel(c_id)
@@ -510,14 +509,21 @@ def load_classes():
    
     return class_list
 
-def run():
-
-    dotenv.load_dotenv()
-    token = str(os.getenv("TOKEN"))
+def init():
+    
     intents = discord.Intents.all()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents)
     db = LBDB()
+    return (bot, db)
+
+def stop(bot, db):
+    db.close()
+    bot.close()
+
+def run(bot, db):
+    dotenv.load_dotenv()
+    token = str(os.getenv("TOKEN"))
     
     
     @bot.event
@@ -555,9 +561,9 @@ def run():
     @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
     async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
         rows = db.show(table)
-        dicts = [{k: item[k] for k in item.keys()} for item in rows]
-        print(dicts)
-        await ctx.respond(f'your table view {dicts}', delete_after=30)
+        #dicts = [{k: item[k] for k in item.keys()} for item in rows]
+        #print(dicts)
+        await ctx.respond(f'your table view {rows}', delete_after=30)
     
     @bot.slash_command(name="register_char", description="adds a given char of the user to the DB")
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
@@ -581,16 +587,16 @@ def run():
 
         if user:
             result = db.get_chars(ctx.author.name)
-            chardicts = [{k: item[k] for k in item.keys()} for item in result]
-            for c in chardicts:
+            #chardicts = [{k: item[k] for k in item.keys()} for item in result]
+            for c in result:
                 names.append(c.get('char_name'))
                 classes.append(c.get('class'))
                 ilvl.append(c.get('ilvl'))
                 
         else:    
             result = db.get_chars(ctx.author.name)
-            chardicts = [{k: item[k] for k in item.keys()} for item in result]
-            for c in chardicts:
+            #chardicts = [{k: item[k] for k in item.keys()} for item in result]
+            for c in result:
                 names.append(c.get('char_name'))
                 classes.append(c.get('class'))
                 ilvl.append(c.get('ilvl'))
@@ -690,14 +696,15 @@ def run():
         embed.add_field(name='User-guide',value=text)
 
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
-
-            
-
     
-   
+  
 
     
     bot.run(token)
 
 if __name__=="__main__":
-    run()
+    tuple = init()
+    try:
+        run(tuple[0], tuple[1])
+    except KeyboardInterrupt:
+        stop(tuple[0], tuple[1])

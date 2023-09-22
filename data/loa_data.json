@@ -3,7 +3,7 @@
     "raids": [
         {"name": "Valtan", "modes":"1415 Normal, Hard 1445", "member":8, "rtype":"Legion"},
         {"name": "Vykas", "modes":"1430 Normal, Hard 1460", "member":8, "rtype":"Legion"},
-        {"name": "Brelshaza", "modes":"Normal (custom), Hard (custom),1490 G1-2 Normal, 1500 G3-4 Normal, 1520 G5-6 Normal, G1-2 1540 Hard, G3-4 1550 Hard, G5-6 1560 Hard", "member":8, "rtype":"Legion"},
+        {"name": "Brelshaza", "modes":"Normal (custom), Hard (custom), 1490 G1-2 Normal, 1500 G3-4 Normal, 1520 G5-6 Normal, G1-2 1540 Hard, G3-4 1550 Hard, G5-6 1560 Hard", "member":8, "rtype":"Legion"},
         {"name": "Clown", "modes":"1475 Normal", "member":4, "rtype":"Legion"},
         {"name": "Akkan", "modes":"1580 Normal, 1600 Hard", "member":8, "rtype":"Legion"},
         {"name": "Argos", "modes":"1370 Normal", "member":8, "rtype":"Abyssal"},
