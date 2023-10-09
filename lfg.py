@@ -239,7 +239,7 @@ class JoinRaid(discord.ui.View):
                 self.suppvalue.clear()
                 supp_string = fields[7].get('value')
                 re_pattern = re.compile(re.escape(char) + '.*?\n', re.DOTALL)
-                new_dps_string = re.sub(re_pattern, '', supp_string, 1)
+                new_supp_string = re.sub(re_pattern, '', supp_string, 1)
                 embed.set_field_at(7, name='SUPP', value=new_supp_string)
                 embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
 
