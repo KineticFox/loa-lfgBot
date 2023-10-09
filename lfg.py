@@ -531,8 +531,13 @@ def run(bot, db):
     
     @bot.event
     async def on_ready():
-        logger.info(f"We have logged in as {bot.user}")
-        db.setup()
+        logger.info(f"We have logged in as {bot.user} ")
+        guilds = []
+        for guild in bot.guilds:
+            t = ''.join(l for l in guild.name if l.isalnum())
+            guilds.append(t)
+
+        db.setup(guilds)
         set_Raids(db)
         bot.add_view(JoinRaid(db))
         #await persistent_setup(db, bot)
@@ -570,7 +575,8 @@ def run(bot, db):
     
     @bot.slash_command(name="register_char", description="adds a given char of the user to the DB")
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
-        result = db.add_chars(char, cl, ctx.author.name, ilvl, role)
+        table = ''.join(l for l in ctx.guild.name if l.isalnum())
+        result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table)
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="update_char", description="updates the i-lvl of given char in the DB or deletes the given char")
