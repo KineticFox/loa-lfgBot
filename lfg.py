@@ -10,6 +10,7 @@ import json
 from time import sleep
 import asyncio
 import logging
+import re
 
 
 logger = logging.getLogger('discord')
@@ -22,8 +23,6 @@ logger.propagate = False
 
 #----------------------------------------------------------------------------------------------------------------------------#
 raids = {}
-#raids = {"Argos":"Argos Abyss Raid, max 8 players", "Valtan":"valtan Legion Raid, max 8 players", "Vykas":"Vykas Legion Raid, max 8 players", "Kakul-Saydon":"Kakul Legion Raid, max 4 players", "Brelshaza Normal":"Brelshaza Legion Raid, max 8 players"}
-#modes = {"Argos":["Normal Mode, 1370"], "Valtan":["Normal Mode, 1415", "Hard Mode, 1445"], "Vykas":["Normal Mode, 1430", "Hard Mode, 1460"], "Kakul-Saydon":["Training mode, 1385","Normal Mode, 1475"], "Brelshaza Normal":["Training mode, 1430","Gate 1&2, 1490", "Gate 3&4, 1500", "Gate 5&6, 1520"]}
 
 class LegionRaidCreation(discord.ui.View):
 
@@ -103,7 +102,7 @@ class LegionRaidCreation(discord.ui.View):
         thread_id = thread.id
         
         r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id)
-        raid_id = r_id['id']
+        raid_id = r_id['LAST_INSERT_ID()']
         self.db.add_message(m.id, raid_id)
         embed.add_field(name='ID', value=raid_id)
 
@@ -154,7 +153,7 @@ class JoinRaid(discord.ui.View):
             await interaction.response.send_message('No registered chars found. Please register your chars first!',  ephemeral=True)
         elif join_check is not None:
             char = join_check['char_name']
-            await interaction.respond.send_message(f'You are already in this raid with {char}', ephermeral=True)
+            await interaction.response.send_message(f'You are already in this raid with {char}', ephermeral=True)
         else:
             panel = discord.Embed(
                 title='Please choose your Character and as which Role you want to join the raid.',
@@ -225,7 +224,9 @@ class JoinRaid(discord.ui.View):
                 self.db.update_group_mc(group_id, mc)
                 self.dpsvalue.clear()
                 dps_string = fields[6].get('value')
-                new_dps_string = dps_string.replace(f'{char} ({char_ilvl}) - {interaction.user.name}', '')
+
+                re_pattern = re.compile(re.escape(char) + '.*?\n', re.DOTALL)
+                new_dps_string = re.sub(re_pattern, '', dps_string, 1)
                 embed.set_field_at(6, name='DPS', value=new_dps_string)
                 embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                 self.db.remove_groupmember(interaction.user.name, group_id)
@@ -237,7 +238,8 @@ class JoinRaid(discord.ui.View):
                 self.db.update_group_mc(group_id, mc)
                 self.suppvalue.clear()
                 supp_string = fields[7].get('value')
-                new_supp_string = supp_string.replace(f'{char} ({char_ilvl}) - {interaction.user.name}', '')
+                re_pattern = re.compile(re.escape(char) + '.*?\n', re.DOTALL)
+                new_dps_string = re.sub(re_pattern, '', supp_string, 1)
                 embed.set_field_at(7, name='SUPP', value=new_supp_string)
                 embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
 

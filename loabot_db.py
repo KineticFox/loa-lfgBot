@@ -250,9 +250,8 @@ class LBDB:
     
     def delete_raids(self, id):
         try:
-            self.cur.execute(f'DELETE FROM groups WHERE id=?', [id]) #{id}
-            self.cur.execute(f'DELETE FROM raidmember WHERE raid_id=?', [id]) #{id}
-            self.con.commit()
+            self.cur.execute(f'DELETE FROM raidmember WHERE raid_id=?', [id])
+            self.cur.execute(f'DELETE FROM groups WHERE id=?', [id])
         except mariadb.Error as e:
             logger.warning(f'Delete Raid error: {e}')
 
