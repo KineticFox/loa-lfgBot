@@ -148,7 +148,6 @@ class LBDB:
                 self.cur.execute(f'SELECT count(table_name) FROM information_schema.tables WHERE table_type = "base table" AND table_schema="testing" AND table_name LIKE ?;', [sql])
                 res = self.cur.fetchone()
                 counter = res['count(table_name)']
-                print(res['count(table_name)'])
 
                 if counter == 0:
                     self.createTables(guild)
@@ -222,7 +221,7 @@ class LBDB:
     def update_chars(self, charname, ilvl, table, delete:None):
         try:
             if delete == 'no':
-                self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname]) #{ilvl} "{charname}"
+                self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
                 return 'Updated char'
             elif delete == 'yes':
                 self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
@@ -238,7 +237,15 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Database get raid Error - {e}')
             return ['error']
-
+        
+    def get_raids_setup(self,tables):
+        try:
+            for table in tables:
+                self.cur.execute(f'Select * FROM {table}_raids')
+                return self.cur.fetchall()
+        except mariadb.Error as e:
+            logger.warning(f'Database get raid Error - {e}')
+            return ['error']
 
     def save_image(self, raid, url, table):
         try:
