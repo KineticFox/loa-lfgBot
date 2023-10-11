@@ -10,6 +10,9 @@ A recreation of the famous lfg-Bot but only for Lost Ark (by now)
 
 
 # Setup
+- you need a mariadb container running (will be add to the compose file in the future)
+- create inside the mariadb a databse
+- enter the mariadb infomations into the compose file
 ```bash
     docker volume create 'bot-date'
     docker volume create 'bot-ressources'
