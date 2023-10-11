@@ -12,7 +12,6 @@ handler.setFormatter(formater)
 logger.addHandler(handler)
 logger.propagate = False
 
-#meine server id: 777872580870668308 --> guild id?!
 
 dotenv.load_dotenv()
 
@@ -308,7 +307,7 @@ class LBDB:
                 return 1
             else:
                 logger.debug(f'Raid {name} already exists, updating instead')
-                self.cur.execute(f'UPDATE {table}_raids SET modes=?, member=?, type=? WHERE name=? (name, modes, member, type) VALUES (?, ?, ?, ?)', [modes, member, rtype, name])
+                self.cur.execute(f'UPDATE {table}_raids SET modes=?, member=?, type=? WHERE name=?', [modes, member, rtype, name])
                 return 0
 
         except mariadb.Error as e:

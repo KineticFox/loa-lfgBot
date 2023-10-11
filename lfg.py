@@ -657,11 +657,20 @@ def run(bot, db):
                     #await asyncio.sleep(2)
                     url = attachment.attachments[0].url
                     db.save_image(fname_lower, url, 'MrXilef')
+        
+        url = db.get_image_url('default', 'MrXilef')
+        if url is None:
+            file = discord.File(f'ressources/loa.png', filename=f'loa.png')
+            attachment = await ctx.send('Uploaded image', file=file)
+            
+            url = attachment.attachments[0].url
+            db.save_image('default', url, 'MrXilef')
+
 
         raid_file.close()
 
         await ctx.send(f'added the new Raids', delete_after=20)      
-        set_Raids(db)
+        set_Raids(db, 'MrXilef')
     
     @bot.slash_command(name="upload_image", description="Upload specific raid image")
     async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)):
