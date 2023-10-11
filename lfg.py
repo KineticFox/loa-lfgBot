@@ -76,17 +76,17 @@ class LegionRaidCreation(discord.ui.View):
         fname = fields[1].get('value')
         fname_lower = fname.lower()
 
-        type_result = self.db.get_raidtype(fname, 'MrXilef')
+        type_result = self.db.get_raidtype(fname, 'TechKeller')
         type = type_result['type']
 
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
         #upload image
         if type == 'Guardian':
-            result = self.db.get_image_url('default', 'MrXilef')
+            result = self.db.get_image_url('default', 'TechKeller')
             url = result['url']
         else:
-            result = self.db.get_image_url(fname_lower, 'MrXilef')
+            result = self.db.get_image_url(fname_lower, 'TechKeller')
             url = result['url']
         
               
@@ -472,7 +472,7 @@ raid_type = ['Legion', 'Guardian', 'Abyssal']
 
 #---- TODO refactore set_raids for guilds -------#
 def set_Raids(db, tables):
-        result = db.get_raids('MrXilef')
+        result = db.get_raids('TechKeller')
         for r in result:
             modes = r.get('modes')
             modearray = modes.split(',')
@@ -648,7 +648,7 @@ def run(bot, db):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
 
         for i in data['raids']:
-            code = db.add_raids(i['name'], i['modes'], i['member'], i['rtype'], 'MrXilef')
+            code = db.add_raids(i['name'], i['modes'], i['member'], i['rtype'], 'TechKeller')
             if code != 0:
                 if i['rtype'] == 'Legion' or i['rtype'] == 'Abyssal':
                     fname_lower = i['name'].lower()
@@ -656,33 +656,33 @@ def run(bot, db):
                     attachment = await ctx.send('Uploaded image', file=file)
                     #await asyncio.sleep(2)
                     url = attachment.attachments[0].url
-                    db.save_image(fname_lower, url, 'MrXilef')
+                    db.save_image(fname_lower, url, 'TechKeller')
         
-        url = db.get_image_url('default', 'MrXilef')
+        url = db.get_image_url('default', 'TechKeller')
         if url is None:
             file = discord.File(f'ressources/loa.png', filename=f'loa.png')
             attachment = await ctx.send('Uploaded image', file=file)
             
             url = attachment.attachments[0].url
-            db.save_image('default', url, 'MrXilef')
+            db.save_image('default', url, 'TechKeller')
 
 
         raid_file.close()
 
         await ctx.send(f'added the new Raids', delete_after=20)      
-        set_Raids(db, 'MrXilef')
+        set_Raids(db, 'TechKeller')
     
     @bot.slash_command(name="upload_image", description="Upload specific raid image")
     async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)):
         file = discord.File(f'ressources/{name}.png', filename=f'{name}.png')
         attachment = await ctx.send('Uploaded image', file=file)
         url = attachment.attachments[0].url
-        db.save_image(name, url, 'MrXilef')
+        db.save_image(name, url, 'TechKeller')
 
     @bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
     async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
-        db.add_raids(name,modes,member,raidtype, 'MrXilef')
+        db.add_raids(name,modes,member,raidtype, 'TechKeller')
 
         await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
         
@@ -691,7 +691,7 @@ def run(bot, db):
             file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
             attachment = await ctx.send('Uploaded image', file=file)
             url = attachment.attachments[0].url
-            db.save_image(fname_lower, url, 'MrXilef')
+            db.save_image(fname_lower, url, 'TechKeller')
 
         set_Raids(db)
     
