@@ -217,7 +217,7 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Database remove Groupmember Error: {e}')
 
-    def update_chars(self, charname, ilvl, table, delete:None):
+    def update_chars(self, charname, ilvl, delete, table):
         try:
             if delete == 'no':
                 self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])

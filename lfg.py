@@ -736,8 +736,8 @@ def run(bot, db):
         embed.add_field(name='User-guide',value=text)
 
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
-    
-  
+
+
 
     
     bot.run(token)
