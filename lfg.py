@@ -158,7 +158,7 @@ class JoinRaid(discord.ui.View):
             await interaction.response.send_message('No registered chars found. Please register your chars first!',  ephemeral=True)
         elif join_check is not None:
             char = join_check['char_name']
-            await interaction.response.send_message(f'You are already in this raid with {char}', ephermeral=True)
+            await interaction.response.send_message(f'You are already in this raid with {char}', ephemeral=True)
         else:
             panel = discord.Embed(
                 title='Please choose your Character and as which Role you want to join the raid.',
