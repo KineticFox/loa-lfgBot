@@ -167,7 +167,7 @@ class LBDB:
 
     def get_chars(self, user, table):
         try:
-            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM user where name=?)', [user]) #"{user}"
+            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where name=?)', [user]) #"{user}"
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
