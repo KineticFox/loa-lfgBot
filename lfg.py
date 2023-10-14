@@ -110,7 +110,7 @@ class LegionRaidCreation(discord.ui.View):
         self.db.add_message(m.id, raid_id, guild_name)
         embed.add_field(name='ID', value=raid_id)
 
-        await m.edit(embed=embed ,view=JoinRaid(self.db))
+        await m.edit(embed=embed ,view=JoinRaid())
         self.db.close()
         logger.debug(f'stored raid group with ID {raid_id}')
         await interaction.response.defer()
@@ -180,7 +180,7 @@ class JoinRaid(discord.ui.View):
             thread = chanell.get_thread(thread_id)
             message = interaction.message.id
             await interaction.response.edit_message(view=self)
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, group_id, db,thread, message, user, guild_name), embed=panel)
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, message, user, guild_name), embed=panel)
 
   
     @discord.ui.button(
