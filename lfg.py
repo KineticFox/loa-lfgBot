@@ -573,7 +573,7 @@ def run(bot, db):
 
         db.setup(guilds)
         set_Raids(db, guilds)
-        bot.add_view(JoinRaid(db))
+        bot.add_view(JoinRaid())
         #await persistent_setup(db, bot)
         logger.info('Setup in general done')
 
@@ -601,9 +601,12 @@ def run(bot, db):
     @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
     async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.use_db()
         rows = db.show(table, tablename)
         #dicts = [{k: item[k] for k in item.keys()} for item in rows]
         #print(dicts)
+        db.close()
         await ctx.respond(f'your table view {rows}', delete_after=30)
     
     @bot.slash_command(name="register_char", description="adds a given char of the user to the DB")
