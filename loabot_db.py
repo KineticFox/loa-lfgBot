@@ -155,6 +155,10 @@ class LBDB:
 
         except mariadb.Error as e:
             logger.warning(f'DB setup Error - {e}')
+
+    def use_db(self):
+        name = os.getenv("DB_NAME")
+        self.cur.execute(f"use {name};")
     
     def close(self):
         logger.info('Closing DB connection')
@@ -391,4 +395,4 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Raw SQL Error: {e}')
             return f'command failed; {e}'
-            
+        
