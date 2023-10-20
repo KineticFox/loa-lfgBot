@@ -606,7 +606,7 @@ def run(bot, db):
         await ctx.respond(f"hello {ctx.user}")
 
     @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title")
-    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'When?', required=True, max_length=40)):
+    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'When? date, time or short text', required=True, max_length=40)):
         time = date
         db = LBDB()
         db.use_db()
