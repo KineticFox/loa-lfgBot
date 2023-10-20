@@ -106,12 +106,14 @@ class LegionRaidCreation(discord.ui.View):
         thread_id = thread.id
         
         r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
-        if len(r_id) == 0:
+        print(r_id)
+        if r_id is None:
             self.db.close()
             logger.warning(f'Raid creation failed for {interaction.user.name}')
+            await interaction.response.send_message('Something went wrong!',  ephemeral=True)
             await m.delete()
             await thread.delete()
-            await interaction.response.send_message('Something went wrong!',  ephemeral=True)
+            
         else: 
             raid_id = r_id['LAST_INSERT_ID()']
             self.db.add_message(m.id, raid_id, guild_name)
@@ -800,6 +802,7 @@ def run(bot, db):
                 - with ```/lfg``` you create a looking-for-group lobby / Befehl um Gruppen zu erstellen\n
 
                 Notes:
+                - Bitte keine Emojis verwenden in Textfeldern
                 - date: ist ein Freitexfeld und dort kann auch etwas stehen wie "wird im thread besprochen"\n
                 - mit ```/show:_chars``` kann man sich auch chars von anderen anzeigen lassen mit dem zusätzlichen parameter 'user'\n
                 """

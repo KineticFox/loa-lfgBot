@@ -254,7 +254,7 @@ class LBDB:
     def get_raid_mc(self, raid):
         table = 'TechKeller'
         try:
-            self.cur.execute(f'SELECT member FROM {table}_raids WHERE name=raid')
+            self.cur.execute(f'SELECT member FROM {table}_raids WHERE name=?', [raid])
             res = self.cur.fetchone()
             return res
         except mariadb.Error as e:
