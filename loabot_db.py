@@ -224,11 +224,21 @@ class LBDB:
     def update_chars(self, charname, ilvl, delete, table):
         try:
             if delete == 'no':
-                self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
-                return 'Updated char'
+                self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
+                res = self.cur.fetchone()
+                if len(res) == 0:
+                    return 'This Char does not exist / Dieser Char existiert nicht'
+                else:
+                    self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
+                    return 'Updated char'
             elif delete == 'yes':
-                self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
-                return 'deleted char'
+                self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?' [charname])
+                res = self.cur.fetchall()
+                if len(res) == 0:
+                    self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
+                    return 'deleted char'
+                else:
+                    return 'Your Char is member of some raids, please leave first / Dein Char ist noch Mitglied von Raids bitte verlasse diese zuerst.'
         except mariadb.Error as e:
             logger.warning(f'Databse update char Error - {e}')
             return f'Databse update char Error - {e}'
