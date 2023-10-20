@@ -794,10 +794,14 @@ def run(bot, db):
     async def help(ctx):
 
         text="""
-                1. ```/register_char``` -- registers one of many of your chars\n
-                2. Now you are good to go and you can join and create Groups/Raids\n
-                - with ```/show_chars``` you can get an overview of your registered chars\n
-                - with ```/lfg``` you create a looking-for-group lobby\n
+                1. ```/register_char``` -- registers one of many of your chars/registriert einen von vielen deiner chars\n
+                2. Now you are good to go and you can join and create Groups/Raids / Jetzt kannst du Gruppen beitreten und erstellen\n
+                - with ```/show_chars``` you can get an overview of your registered chars / zeigt eine Übersicht deiner Chars an\n
+                - with ```/lfg``` you create a looking-for-group lobby / Befehl um Gruppen zu erstellen\n
+
+                Notes:
+                - date: ist ein Freitexfeld und dort kann auch etwas stehen wie "wird im thread besprochen"\n
+                - mit ```/show:_chars``` kann man sich auch chars von anderen anzeigen lassen mit dem zusätzlichen parameter 'user'\n
                 """
 
         embed = discord.Embed(
