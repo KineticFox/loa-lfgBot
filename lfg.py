@@ -794,9 +794,8 @@ def run(bot, db):
     async def help(ctx):
 
         text="""
-                1. ```/register_user``` -- registers your Discord-User to the Bot and Database\n
-                2. ```/register_char``` -- registers one of many of your chars\n
-                3. Now you are good to go and you can join and create Groups/Raids\n
+                1. ```/register_char``` -- registers one of many of your chars\n
+                2. Now you are good to go and you can join and create Groups/Raids\n
                 - with ```/show_chars``` you can get an overview of your registered chars\n
                 - with ```/lfg``` you create a looking-for-group lobby\n
                 """
