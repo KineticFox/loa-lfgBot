@@ -635,7 +635,7 @@ def run(bot, db):
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="show_chars", description="shows all chars of the user or if no explicit user is given shows your chars")
-    async def db_getchars(ctx, user: discord.Option(str, 'User', required=False)):
+    async def db_getchars(ctx, user: discord.Member = None):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         panel = discord.Embed(
             title='Char overview',
@@ -648,8 +648,11 @@ def run(bot, db):
         db = LBDB()
         db.use_db()
 
-        if user:
-            result = db.get_chars(user, tablename)
+        if user is not None:
+            raw_user = user.name
+            username = raw_user.split('#')[0]
+            print
+            result = db.get_chars(username, tablename)
             #chardicts = [{k: item[k] for k in item.keys()} for item in result]
             for c in result:
                 names.append(c.get('char_name'))
@@ -663,7 +666,7 @@ def run(bot, db):
             panel.add_field(name='Class', value=e_class)
             panel.add_field(name='ilvl', value=e_ilvl)
             db.close()
-            await ctx.respond(f'Characters - {user}', embed=panel, ephemeral=True)
+            await ctx.respond(f'Characters - {username}', embed=panel, ephemeral=True)
                 
         else:    
             result = db.get_chars(ctx.author.name, tablename)
