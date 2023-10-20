@@ -159,6 +159,17 @@ class JoinRaid(discord.ui.View):
         group_id = fields[8].get('value') #groupd tabel id
         thread_id = None
         thread = None
+        raid = fields[1].get('value')
+        raidname = raid.split(' -')[0]
+
+
+        res = db.get_raid_mc(raidname)
+        mc = res['member']
+
+        g_res= db.get_group(group_id, guild_name)
+        g_mc = g_res['raid_mc']
+
+
         
         #check if user is already connected to this raid id --> raidmember table
         join_check = db.raidmember_check(group_id, interaction.user.name, guild_name)
@@ -173,6 +184,9 @@ class JoinRaid(discord.ui.View):
             db.close()
             char = join_check['char_name']
             await interaction.response.send_message(f'You are already in this raid with {char}', ephemeral=True)
+        elif g_mc >= mc:
+            db.close()
+            await interaction.response.send_message(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
         else:
             panel = discord.Embed(
                 title='Please choose your Character and as which Role you want to join the raid.',
@@ -589,7 +603,7 @@ def run(bot, db):
     async def hello(ctx):
         await ctx.respond(f"hello {ctx.user}")
 
-    @bot.slash_command(name="lfg", description="creates a raid")
+    @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title")
     async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'When?', required=True, max_length=40)):
         time = date
         db = LBDB()
