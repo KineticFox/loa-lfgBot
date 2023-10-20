@@ -106,15 +106,22 @@ class LegionRaidCreation(discord.ui.View):
         thread_id = thread.id
         
         r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
-        raid_id = r_id['LAST_INSERT_ID()']
-        self.db.add_message(m.id, raid_id, guild_name)
-        embed.add_field(name='ID', value=raid_id)
+        if len(r_id) == 0:
+            self.db.close()
+            logger.warning(f'Raid creation failed for {interaction.user.name}')
+            await m.delete()
+            await thread.delete()
+            await interaction.response.send_message('Something went wrong!',  ephemeral=True)
+        else: 
+            raid_id = r_id['LAST_INSERT_ID()']
+            self.db.add_message(m.id, raid_id, guild_name)
+            embed.add_field(name='ID', value=raid_id)
 
-        await m.edit(embed=embed ,view=JoinRaid())
-        self.db.close()
-        logger.debug(f'stored raid group with ID {raid_id}')
-        await interaction.response.defer()
-        await interaction.delete_original_response()
+            await m.edit(embed=embed ,view=JoinRaid())
+            self.db.close()
+            logger.debug(f'stored raid group with ID {raid_id}')
+            await interaction.response.defer()
+            await interaction.delete_original_response()
 
 class JoinRaid(discord.ui.View):
 
@@ -583,7 +590,7 @@ def run(bot, db):
         await ctx.respond(f"hello {ctx.user}")
 
     @bot.slash_command(name="lfg", description="creates a raid")
-    async def create_raid(ctx, title: discord.Option(str, 'Choose a title'), date: discord.Option(str, 'When?', required=True)):
+    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'When?', required=True, max_length=40)):
         time = date
         db = LBDB()
         db.use_db()
@@ -610,7 +617,7 @@ def run(bot, db):
         await ctx.respond(f'your table view {rows}', delete_after=30)
     
     @bot.slash_command(name="register_char", description="adds a given char of the user to the DB")
-    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
+    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
         db = LBDB()
         db.use_db()
         table = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -619,7 +626,7 @@ def run(bot, db):
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="update_char", description="updates the i-lvl of given char in the DB or deletes the given char")
-    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')):
+    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True, max_length=69), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
         db.use_db()
