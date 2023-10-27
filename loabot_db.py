@@ -195,6 +195,20 @@ class LBDB:
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'Database raid type Error - {e}')
+    
+    def get_raidmember(self, group_id, table):
+        try:
+            self.cur.execute(f'SELECT user_id FROM {table}_raidmember WHERE raid_id=?',[group_id])
+            return self.cur.fetchone()
+        except mariadb.Error as e:
+            logger.warning(f'DB raidmember Error - {e}')
+
+    def get_username(self, id, table):
+        try:
+            self.cur.execute(f'SELECT name FROM {table}_user WHERE id=?',[id])
+            return self.cur.fetchone()
+        except mariadb.Error as e:
+            logger.warning(f'DB user name Error - {e}')
 
     def update_group_mc(self, id, count, table):
         try:

@@ -4,6 +4,7 @@ from discord.components import SelectOption
 from discord.enums import ChannelType, ComponentType
 from discord.ext import commands
 from discord.interactions import Interaction
+from discord.ui.item import Item
 import dotenv
 from loabot_db import LBDB
 import json
@@ -205,6 +206,44 @@ class JoinRaid(discord.ui.View):
             await interaction.response.edit_message(view=self)
             await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, message, user, guild_name), embed=panel)
 
+
+    @discord.ui.button(
+            label='Kick member',
+            style=discord.ButtonStyle.danger,
+            custom_id='kick_m'
+    )
+
+    async def kick_callback(self, button, interaction):
+
+        user_list = []
+        embed = interaction.message.embeds[0]
+        author = embed.author.name
+        embed_dict = embed.to_dict()
+
+        if interaction.user.name != author:
+            await interaction.response.send_message('You are not party leader/ du bist nicht der Party leader!!', ephemeral=True)
+        else:
+            fields = embed_dict.get('fields')
+
+            thread_id = None
+            thread = None
+
+            chanell = interaction.guild.get_channel(interaction.channel.id)
+            allThreads = chanell.threads
+
+
+            for t in allThreads:
+                if t.name == embed.title:
+                    thread_id = t.id
+
+            thread = chanell.get_thread(thread_id)
+            t_member = await thread.fetch_members()
+
+            for m in t_member:
+                member = await interaction.guild.fetch_member(m.id)
+                user_list.append(member)
+
+            await interaction.response.send_message(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
   
     @discord.ui.button(
         label='leave',
@@ -286,9 +325,22 @@ class JoinRaid(discord.ui.View):
 
                 db.remove_groupmember(interaction.user.name, group_id, guild_name)
 
-            db.close()
-            await interaction.response.edit_message(embed=embed, view=self)
-            await thread.remove_user(interaction.user)
+            if embed.author.name == interaction.user.name:
+                if mc <= 1:
+                    db.close()
+                    await interaction.response.send_message('You can not leave please delete group/ Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
+                else:
+                    db_user_id = db.get_raidmember(group_id, guild_name)['user_id']
+                    db_user_name = db.get_username(db_user_id, guild_name)['name']
+
+                    embed.set_author(name=db_user_name)
+                    db.close()
+                    await interaction.response.edit_message(embed=embed, view=self)
+                    await thread.remove_user(interaction.user)
+            else:
+                db.close()
+                await interaction.response.edit_message(embed=embed, view=self)
+                await thread.remove_user(interaction.user)
                     
     @discord.ui.button(
         label='delete',
@@ -319,7 +371,7 @@ class JoinRaid(discord.ui.View):
 
         thread = chanell.get_thread(thread_id)
 
-        if str(interaction.user) == author:
+        if interaction.user.name == author:
             db.delete_raids(fields[8].get('value'), guild_name)
             db.close()
             await thread.delete()
@@ -355,8 +407,104 @@ class JoinDialogue(discord.ui.View):
             )
         
         self.add_item(CharSelect(self.user_chars, self.db))
+
+class KickView(discord.ui.View):
+    def __init__(self, memberlist, thread, orgview):
+        self.mlist = memberlist
+        self.thread = thread
+        self.orgview = orgview
+        super().__init__(timeout=40, disable_on_timeout=True)
+
+        self.add_item(KickDialogue(self.mlist, self.thread))
     
+class KickDialogue(discord.ui.Select):
+    def __init__(self, mlist, thread) -> None:
+        self.memberlist = mlist
+        self.thread = thread
+        def set_options():
+            list=[]
+            for m in mlist:
+                list.append(discord.SelectOption(label=m.name))
+            return list
+        super().__init__(custom_id='memberlist', placeholder='Choose member', min_values=1, max_values=1, options=set_options(), disabled=False)
     
+    async def callback(self, interaction: discord.Interaction):
+        db = LBDB()
+        db.use_db()
+        embed = interaction.message.embeds[0]
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+
+        embed_dict = embed.to_dict()
+        fields = embed_dict.get('fields')
+        group_id = fields[8].get('value')
+
+        member_name = self.values[0]
+
+        user = {}
+        for m in self.memberlist:
+            if m.name == member_name:
+                user = m
+
+        #get char of user
+        char_result = db.raidmember_check(group_id, user.name, guild_name)
+        
+        if char_result is None:
+            db.close()
+            await interaction.response.send_message('User not in thread', ephemeral=True)
+        else:
+            message = db.get_message(group_id, guild_name)
+            m_id = message['m_id']
+            char = char_result['char_name']
+            #get role of user
+            role_result = db.get_charRole(char, guild_name)
+            role = role_result['role']
+
+            group_result = db.get_group(group_id, guild_name)
+            mc = group_result['raid_mc']
+
+            ilvl = db.get_char_ilvl(char, guild_name)
+            char_ilvl = ilvl['ilvl']
+
+            if role == 'DPS':
+                mc -= 1
+                dps_count = fields[3].get('value')
+                d_count = int(dps_count) - 1
+                db.update_group_mc(group_id, mc, guild_name)
+                #self.dpsvalue.clear()
+                dps_string = fields[6].get('value')
+
+                re_pattern = re.compile(re.escape(char) + '.*?(\n|$)', re.DOTALL)
+                new_dps_string = re.sub(re_pattern, '', dps_string, 1)
+                embed.set_field_at(6, name='DPS', value=new_dps_string)
+                embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                db.remove_groupmember(interaction.user.name, group_id, guild_name)
+
+            else:
+                mc -= 1
+                supp_count = fields[4].get('value')
+                s_count = int(supp_count) - 1
+                db.update_group_mc(group_id, mc, guild_name)
+                #self.suppvalue.clear()
+                supp_string = fields[7].get('value')
+                re_pattern = re.compile(re.escape(char) + '.*?(\n|$)', re.DOTALL)
+                new_supp_string = re.sub(re_pattern, '', supp_string, 1)
+
+                embed.set_field_at(7, name='SUPP', value=new_supp_string)
+                embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+
+                db.remove_groupmember(interaction.user.name, group_id, guild_name)
+
+            db.close()
+
+        
+            await self.thread.remove_user(user)
+            await interaction.response.send_message(f'removed user: {user.name}', ephemeral=True)
+            channel = interaction.guild.get_channel(interaction.channel.id)
+            m = await channel.fetch_message(m_id)
+            await m.edit(view=self.view.orgview, embed=embed)
+    
+
+
 
 class CharSelect(discord.ui.Select):
     def __init__(self, optionlist, db) -> None:
@@ -615,8 +763,10 @@ def run(bot, db):
             title=title,
             color=discord.Colour.blue(),
         )
+        name = ctx.author.name
+        clean_name = name.split('#')[0]
         panel.add_field(name="Date/Time: ", value=time, inline=True)
-        panel.set_author(name=ctx.author)
+        panel.set_author(name=clean_name)
 
         await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
 
