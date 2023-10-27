@@ -279,9 +279,15 @@ class JoinRaid(discord.ui.View):
         char_result = db.raidmember_check(group_id, interaction.user.name, guild_name)
         
 
-        #check if user is raid member      
+        #check if user is raid member 
 
-        if char_result is None:
+        group_result = db.get_group(group_id, guild_name)
+        mc = group_result['raid_mc']
+
+        if mc <= 1:
+            db.close()
+            await interaction.response.send_message('You can not leave please delete group/ Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
+        elif char_result is None:
             db.close()
             await interaction.response.send_message('you can not leave, you are not member of the party', ephemeral=True)
         else:
@@ -290,8 +296,7 @@ class JoinRaid(discord.ui.View):
             role_result = db.get_charRole(char, guild_name)
             role = role_result['role']
 
-            group_result = db.get_group(group_id, guild_name)
-            mc = group_result['raid_mc']
+            
 
             ilvl = db.get_char_ilvl(char, guild_name)
             char_ilvl = ilvl['ilvl']
@@ -326,17 +331,14 @@ class JoinRaid(discord.ui.View):
                 db.remove_groupmember(interaction.user.name, group_id, guild_name)
 
             if embed.author.name == interaction.user.name:
-                if mc <= 1:
-                    db.close()
-                    await interaction.response.send_message('You can not leave please delete group/ Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
-                else:
-                    db_user_id = db.get_raidmember(group_id, guild_name)['user_id']
-                    db_user_name = db.get_username(db_user_id, guild_name)['name']
+                
+                db_user_id = db.get_raidmember(group_id, guild_name)['user_id']
+                db_user_name = db.get_username(db_user_id, guild_name)['name']
 
-                    embed.set_author(name=db_user_name)
-                    db.close()
-                    await interaction.response.edit_message(embed=embed, view=self)
-                    await thread.remove_user(interaction.user)
+                embed.set_author(name=db_user_name)
+                db.close()
+                await interaction.response.edit_message(embed=embed, view=self)
+                await thread.remove_user(interaction.user)
             else:
                 db.close()
                 await interaction.response.edit_message(embed=embed, view=self)
