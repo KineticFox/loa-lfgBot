@@ -5,6 +5,14 @@ services:
     #image: python:latest
     #workingdir: /
     #command: bash -c "pip3 install -r requirements.txt && python3 lfg.py"
+    environment:
+      - TOKEN=
+      - DB_USER=
+      - DB_PW=
+      - DB_IP=
+      - DB_PORT=
+      - DB_NAME=
+
     volumes:
       - bot-data:/data
       - bot-ressources:/ressources
