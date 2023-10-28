@@ -69,7 +69,6 @@ class LegionRaidCreation(discord.ui.View):
     async def button_callback(self, button, interaction):
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
-        #self.thread = await chanell.create_thread(name=f"{embed.title}", type=discord.ChannelType.public_thread)
 
         edict = embed.to_dict()
         fields = edict.get('fields')
@@ -137,8 +136,6 @@ class JoinRaid(discord.ui.View):
         self.dpsvalue = []
         self.suppvalue= []
         self.disabled = True
-        #self.db = db
-        #self.user_chars = [] #TODO: clear list after join [x]
         self.parentview = self
         self.embed = None
         self.group_id = None
@@ -179,20 +176,20 @@ class JoinRaid(discord.ui.View):
 
         if result is None:
             db.close()
-            await interaction.response.send_message('Please register your user and chars first!',  ephemeral=True)        
+            await interaction.response.send_message('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!',  ephemeral=True)        
         elif len(result) == 0:
             db.close()
-            await interaction.response.send_message('No registered chars found. Please register your chars first!',  ephemeral=True)
+            await interaction.response.send_message('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
         elif join_check is not None:
             db.close()
             char = join_check['char_name']
-            await interaction.response.send_message(f'You are already in this raid with {char}', ephemeral=True)
+            await interaction.response.send_message(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
         elif g_mc >= mc:
             db.close()
             await interaction.response.send_message(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
         else:
             panel = discord.Embed(
-                title='Please choose your Character and as which Role you want to join the raid.',
+                title='Please choose your Character / Bitte wähle deinen Charakter',
                 color=discord.Colour.blue(),
             )
 
@@ -221,7 +218,7 @@ class JoinRaid(discord.ui.View):
         embed_dict = embed.to_dict()
 
         if interaction.user.name != author:
-            await interaction.response.send_message('You are not party leader/ du bist nicht der Party leader!!', ephemeral=True)
+            await interaction.response.send_message('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
         else:
             fields = embed_dict.get('fields')
 
@@ -241,13 +238,18 @@ class JoinRaid(discord.ui.View):
 
             for m in t_member:
                 member = await interaction.guild.fetch_member(m.id)
-                user_list.append(member)
-
-            await interaction.response.send_message(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
+                if member.name == 'loaBot' or member.name == interaction.user.name or member.name == 'loabot-test':
+                    continue
+                else:
+                    user_list.append(member)
+            if len(user_list) == 0:
+                await interaction.response.send_message('No users to kick in this thread / Es sind keine User in der Gruppe', ephemeral=True)
+            else:
+                await interaction.response.send_message(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
   
     @discord.ui.button(
         label='leave',
-        style=discord.ButtonStyle.red,
+        style=discord.ButtonStyle.blurple,
         custom_id='leave_thread'
     )
 
@@ -286,10 +288,10 @@ class JoinRaid(discord.ui.View):
 
         if mc <= 1:
             db.close()
-            await interaction.response.send_message('You can not leave please delete group/ Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
+            await interaction.response.send_message('You can not leave please delete group / Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
         elif char_result is None:
             db.close()
-            await interaction.response.send_message('you can not leave, you are not member of the party', ephemeral=True)
+            await interaction.response.send_message('You can not leave, you are not member of the party / Du bist kein Mitglied der Gruppe', ephemeral=True)
         else:
             char = char_result['char_name']
             #get role of user
@@ -381,7 +383,7 @@ class JoinRaid(discord.ui.View):
             await interaction.message.delete()
         else:
             db.close()
-            await interaction.response.send_message('you can not delete the party because you are not the owner', ephemeral=True)
+            await interaction.response.send_message('you can not delete the party because you are not the owner / Du kannst die Gruppe nicht löschen, da du nicht der Leiter bist.', ephemeral=True)
 
 #--------------------- Subclassed view elements -----------------------------------#
 
@@ -452,7 +454,7 @@ class KickDialogue(discord.ui.Select):
         
         if char_result is None:
             db.close()
-            await interaction.response.send_message('User not in thread', ephemeral=True)
+            await interaction.response.send_message('User is not in thread / Benutzer ist nicht im Raid', ephemeral=True)
         else:
             message = db.get_message(group_id, guild_name)
             m_id = message['m_id']
@@ -590,7 +592,7 @@ class CharSelect(discord.ui.Select):
         else:
             name = check['char_name']
             self.db.close()
-            await interaction.response.send_message(f'you are already in this group with {name}', ephemeral=True)
+            await interaction.response.send_message(f'you are already in this group with {name} / Du bist schon mit {name} angemeldet', ephemeral=True)
 
 class RaidType(discord.ui.Select):
     def __init__(self, parentview) -> None:
@@ -640,7 +642,7 @@ class RaidModeSelect(discord.ui.Select):
         self.mode = mode
         def set_options():
             list = []
-            list.append(discord.SelectOption(label='Static', description='For groups with no spcifig raid type (e.g static groups)'))
+            list.append(discord.SelectOption(label='Static', description='For static groups'))
             for m in self.mode.get('modes'):
                 list.append(discord.SelectOption(label=m))
             return list
@@ -755,8 +757,8 @@ def run(bot, db):
     async def hello(ctx):
         await ctx.respond(f"hello {ctx.user}")
 
-    @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title")
-    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'When? date, time or short text', required=True, max_length=40)):
+    @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title / Erstellt eine lfg-Party, keine emojis erlaubt.")
+    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'Date + time or short text', required=True, max_length=40)):
         time = date
         db = LBDB()
         db.use_db()
@@ -770,7 +772,7 @@ def run(bot, db):
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=clean_name)
 
-        await ctx.respond("A wild Raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
+        await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
 
     
     @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
@@ -784,7 +786,7 @@ def run(bot, db):
         db.close()
         await ctx.respond(f'your table view {rows}', delete_after=30)
     
-    @bot.slash_command(name="register_char", description="adds a given char of the user to the DB")
+    @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
         db = LBDB()
         db.use_db()
@@ -793,7 +795,7 @@ def run(bot, db):
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
-    @bot.slash_command(name="update_char", description="updates the i-lvl of given char in the DB or deletes the given char")
+    @bot.slash_command(name="update_char", description="Updates the i-lvl of given char or deletes it / Ändert das i-lvl des Charakters oder löscht ihn")
     async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True, max_length=69), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
@@ -802,7 +804,7 @@ def run(bot, db):
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
-    @bot.slash_command(name="show_chars", description="shows all chars of the user or if no explicit user is given shows your chars")
+    @bot.slash_command(name="show_chars", description="Shows all chars of the user / Zeigt alle Charaktere des Spielers an")
     async def db_getchars(ctx, user: discord.Member = None):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         panel = discord.Embed(
@@ -956,7 +958,7 @@ def run(bot, db):
                 Notes:
                 - Bitte keine Emojis verwenden in Textfeldern
                 - date: ist ein Freitexfeld und dort kann auch etwas stehen wie "wird im thread besprochen"\n
-                - mit ```/show:_chars``` kann man sich auch chars von anderen anzeigen lassen mit dem zusätzlichen parameter 'user'\n
+                - mit ```/show_chars``` kann man sich auch chars von anderen anzeigen lassen mit dem zusätzlichen parameter 'user'\n
                 """
 
         embed = discord.Embed(
