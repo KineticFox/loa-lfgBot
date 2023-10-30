@@ -144,10 +144,10 @@ class LBDB:
             logger.info("testing if Tables exist")
             for guild in table_names:
                 sql = guild + '%' 
-                self.cur.execute(f'SELECT count(table_name) FROM information_schema.tables WHERE table_type = "base table" AND table_schema="testing" AND table_name LIKE ?;', [sql])
+                self.cur.execute(f'SELECT count(table_name) FROM information_schema.tables WHERE table_type = "base table" AND table_schema="{name}" AND table_name LIKE ?;', [sql])
                 res = self.cur.fetchone()
                 counter = res['count(table_name)']
-
+                print(f'Guild counter: {counter}')
                 if counter == 0:
                     self.createTables(guild)
                     
