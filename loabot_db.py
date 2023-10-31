@@ -161,7 +161,6 @@ class LBDB:
         self.cur.execute(f"use {name};")
     
     def close(self):
-        logger.info('Closing DB connection')
         self.connection.close()
         
 
