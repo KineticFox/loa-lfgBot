@@ -141,7 +141,7 @@ class JoinRaid(discord.ui.View):
         self.group_id = None
 
     @discord.ui.button(
-        label='join Raid',
+        label='Join raid',
         style=discord.ButtonStyle.green,
         custom_id= 'join_button'
     )
@@ -248,7 +248,7 @@ class JoinRaid(discord.ui.View):
                 await interaction.response.send_message(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
   
     @discord.ui.button(
-        label='leave',
+        label='Leave',
         style=discord.ButtonStyle.blurple,
         custom_id='leave_thread'
     )
@@ -347,7 +347,7 @@ class JoinRaid(discord.ui.View):
                 await thread.remove_user(interaction.user)
                     
     @discord.ui.button(
-        label='delete',
+        label='Delete',
         style=discord.ButtonStyle.red,
         custom_id='delete_thread'
     )
