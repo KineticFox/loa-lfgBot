@@ -692,7 +692,7 @@ async def raid_list_init(db, context):
 
     raid_file.close()
 
-
+"""
 async def persistent_setup(db, bot):
     result = db.get_messages()
     logger.debug(f'Message IDs: {result}')
@@ -707,6 +707,7 @@ async def persistent_setup(db, bot):
         logger.debug(f'Retrived msg object: {msg}')
         #bot.add_view(view=TestFollow(msg.embeds[0]))#, message_id=msg.id)
     logger.info('Add all persistent views')
+"""
 
 def load_classes():
     class_list = []
@@ -726,14 +727,12 @@ def init():
     intents = discord.Intents.all()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents)
-    db = LBDB()
-    return (bot, db)
+    return bot
 
-def stop(bot, db):
-    db.close()
+def stop(bot):
     bot.close()
 
-def run(bot, db):
+def run(bot):
     dotenv.load_dotenv()
     token = str(os.getenv("TOKEN"))
     
@@ -742,14 +741,15 @@ def run(bot, db):
     async def on_ready():
         logger.info(f"We have logged in as {bot.user} ")
         guilds = []
+        db = LBDB()
         for guild in bot.guilds:
             t = ''.join(l for l in guild.name if l.isalnum())
             guilds.append(t)
-
+        
         db.setup(guilds)
         set_Raids(db, guilds)
         bot.add_view(JoinRaid())
-        #await persistent_setup(db, bot)
+        db.close()
         logger.info('Setup in general done')
 
     
@@ -775,7 +775,7 @@ def run(bot, db):
         await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
 
     
-    @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
+    @bot.slash_command(name="db_showtable", description="shows all rows of given table")
     async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
@@ -975,8 +975,8 @@ def run(bot, db):
     bot.run(token)
 
 if __name__=="__main__":
-    tuple = init()
+    bot = init()
     try:
-        run(tuple[0], tuple[1])
+        run(bot)
     except KeyboardInterrupt:
-        stop(tuple[0], tuple[1])
+        stop(bot)
