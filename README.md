@@ -1,3 +1,5 @@
+[![](https://dcbadge.vercel.app/api/server/bUmbzkdRhK?style=flat?theme=discord-inverted)](https://discord.gg/bUmbzkdRhK)
+
 # loa-lfgBot
 A recreation of the famous lfg-Bot but only for Lost Ark (by now)
 

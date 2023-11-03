@@ -161,13 +161,22 @@ class LBDB:
         self.cur.execute(f"use {name};")
     
     def close(self):
-        logger.info('Closing DB connection')
         self.connection.close()
+
+    def get_my_raids(self, username, table):
+        group_list = []
+        try:
+            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE name=?)', [username])
+            res = self.cur.fetchall()
+            return res            
+        
+        except mariadb.Error as e:
+            logger.warning(f'DB get my raids Error - {e}')
         
 
     def get_chars(self, user, table):
         try:
-            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where name=?)', [user]) #"{user}"
+            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where name=?)', [user]) 
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:

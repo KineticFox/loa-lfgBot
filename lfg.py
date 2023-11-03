@@ -141,7 +141,7 @@ class JoinRaid(discord.ui.View):
         self.group_id = None
 
     @discord.ui.button(
-        label='join Raid',
+        label='Join raid',
         style=discord.ButtonStyle.green,
         custom_id= 'join_button'
     )
@@ -194,11 +194,7 @@ class JoinRaid(discord.ui.View):
             )
 
             chanell = interaction.guild.get_channel(interaction.channel.id)
-            allThreads = chanell.threads
-            for t in allThreads:
-                if t.name == self.embed.title:
-                    thread_id = t.id
-            thread = chanell.get_thread(thread_id)
+            thread = chanell.get_thread(interaction.message.id)
             message = interaction.message.id
             await interaction.response.edit_message(view=self)
             await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, message, user, guild_name), embed=panel)
@@ -226,14 +222,7 @@ class JoinRaid(discord.ui.View):
             thread = None
 
             chanell = interaction.guild.get_channel(interaction.channel.id)
-            allThreads = chanell.threads
-
-
-            for t in allThreads:
-                if t.name == embed.title:
-                    thread_id = t.id
-
-            thread = chanell.get_thread(thread_id)
+            thread = chanell.get_thread(interaction.message.id)
             t_member = await thread.fetch_members()
 
             for m in t_member:
@@ -248,7 +237,7 @@ class JoinRaid(discord.ui.View):
                 await interaction.response.send_message(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
   
     @discord.ui.button(
-        label='leave',
+        label='Leave',
         style=discord.ButtonStyle.blurple,
         custom_id='leave_thread'
     )
@@ -262,14 +251,9 @@ class JoinRaid(discord.ui.View):
         count = len(self.suppvalue) + len(self.dpsvalue)
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
-        allThreads = chanell.threads
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        for t in allThreads:
-            if t.name == embed.title:
-                thread_id = t.id
-
-        thread = chanell.get_thread(thread_id)
+        thread = chanell.get_thread(interaction.message.id)
         threadMeembers = await thread.fetch_members()
 
         #get group id
@@ -347,7 +331,7 @@ class JoinRaid(discord.ui.View):
                 await thread.remove_user(interaction.user)
                     
     @discord.ui.button(
-        label='delete',
+        label='Delete',
         style=discord.ButtonStyle.red,
         custom_id='delete_thread'
     )
@@ -365,15 +349,9 @@ class JoinRaid(discord.ui.View):
         thread = None
 
         chanell = interaction.guild.get_channel(interaction.channel.id)
-        allThreads = chanell.threads
-
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        for t in allThreads:
-            if t.name == embed.title:
-                thread_id = t.id
-
-        thread = chanell.get_thread(thread_id)
+        thread = chanell.get_thread(interaction.message.id)
 
         if interaction.user.name == author:
             db.delete_raids(fields[8].get('value'), guild_name)
@@ -692,7 +670,7 @@ async def raid_list_init(db, context):
 
     raid_file.close()
 
-
+"""
 async def persistent_setup(db, bot):
     result = db.get_messages()
     logger.debug(f'Message IDs: {result}')
@@ -707,6 +685,7 @@ async def persistent_setup(db, bot):
         logger.debug(f'Retrived msg object: {msg}')
         #bot.add_view(view=TestFollow(msg.embeds[0]))#, message_id=msg.id)
     logger.info('Add all persistent views')
+"""
 
 def load_classes():
     class_list = []
@@ -726,14 +705,12 @@ def init():
     intents = discord.Intents.all()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents)
-    db = LBDB()
-    return (bot, db)
+    return bot
 
-def stop(bot, db):
-    db.close()
+def stop(bot):
     bot.close()
 
-def run(bot, db):
+def run(bot):
     dotenv.load_dotenv()
     token = str(os.getenv("TOKEN"))
     
@@ -742,14 +719,15 @@ def run(bot, db):
     async def on_ready():
         logger.info(f"We have logged in as {bot.user} ")
         guilds = []
+        db = LBDB()
         for guild in bot.guilds:
             t = ''.join(l for l in guild.name if l.isalnum())
             guilds.append(t)
-
+        
         db.setup(guilds)
         set_Raids(db, guilds)
         bot.add_view(JoinRaid())
-        #await persistent_setup(db, bot)
+        db.close()
         logger.info('Setup in general done')
 
     
@@ -775,7 +753,7 @@ def run(bot, db):
         await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
 
     
-    @bot.slash_command(name="db_showtable", description="shows alll rows of given table")
+    @bot.slash_command(name="db_showtable", description="shows all rows of given table")
     async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
@@ -969,14 +947,43 @@ def run(bot, db):
 
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
 
+    @bot.slash_command(name="my_raids")
+    async def my_raids(ctx):
+        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.use_db()
+        group_list = db.get_my_raids(ctx.author.name, tablename)
+        db.close()
 
+        panel = discord.Embed(
+            title='Group overview / Gruppenübersicht',
+            color=discord.Colour.green(),
+        )
+        chars = []
+        raid = []
+        title =[]
 
+        #chardicts = [{k: item[k] for k in item.keys()} for item in result]
+        for g in group_list:
+            chars.append(g.get('char_name'))
+            raid.append(g.get('raid'))
+            title.append(g.get("raid_title"))
+        e_chars = "\n".join(str(char) for char in chars)
+        e_raid = "\n".join(str(r) for r in raid)
+        e_title = "\n".join(str(t) for t in title)
+
+        panel.add_field(name='Char', value=e_chars)
+        panel.add_field(name='Raid', value=e_raid)
+        panel.add_field(name='Title', value=e_title)
+
+        await ctx.respond(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
+        
     
     bot.run(token)
 
 if __name__=="__main__":
-    tuple = init()
+    bot = init()
     try:
-        run(tuple[0], tuple[1])
+        run(bot)
     except KeyboardInterrupt:
-        stop(tuple[0], tuple[1])
+        stop(bot)
