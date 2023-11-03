@@ -967,7 +967,12 @@ def run(bot):
         for g in group_list:
             chars.append(g.get('char_name'))
             raid.append(g.get('raid'))
-            title.append(g.get("raid_title"))
+            
+            channel = await bot.fetch_channel(g.get('dc_id'))
+            #link = await channel.create_invite()
+            print(channel.jump_url)
+            title.append(channel.jump_url)
+
         e_chars = "\n".join(str(char) for char in chars)
         e_raid = "\n".join(str(r) for r in raid)
         e_title = "\n".join(str(t) for t in title)
