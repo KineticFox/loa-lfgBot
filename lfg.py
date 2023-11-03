@@ -194,11 +194,7 @@ class JoinRaid(discord.ui.View):
             )
 
             chanell = interaction.guild.get_channel(interaction.channel.id)
-            allThreads = chanell.threads
-            for t in allThreads:
-                if t.name == self.embed.title:
-                    thread_id = t.id
-            thread = chanell.get_thread(thread_id)
+            thread = chanell.get_thread(interaction.message.id)
             message = interaction.message.id
             await interaction.response.edit_message(view=self)
             await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, message, user, guild_name), embed=panel)
@@ -226,14 +222,7 @@ class JoinRaid(discord.ui.View):
             thread = None
 
             chanell = interaction.guild.get_channel(interaction.channel.id)
-            allThreads = chanell.threads
-
-
-            for t in allThreads:
-                if t.name == embed.title:
-                    thread_id = t.id
-
-            thread = chanell.get_thread(thread_id)
+            thread = chanell.get_thread(interaction.message.id)
             t_member = await thread.fetch_members()
 
             for m in t_member:
@@ -262,14 +251,9 @@ class JoinRaid(discord.ui.View):
         count = len(self.suppvalue) + len(self.dpsvalue)
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
-        allThreads = chanell.threads
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        for t in allThreads:
-            if t.name == embed.title:
-                thread_id = t.id
-
-        thread = chanell.get_thread(thread_id)
+        thread = chanell.get_thread(interaction.message.id)
         threadMeembers = await thread.fetch_members()
 
         #get group id
@@ -365,15 +349,9 @@ class JoinRaid(discord.ui.View):
         thread = None
 
         chanell = interaction.guild.get_channel(interaction.channel.id)
-        allThreads = chanell.threads
-
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        for t in allThreads:
-            if t.name == embed.title:
-                thread_id = t.id
-
-        thread = chanell.get_thread(thread_id)
+        thread = chanell.get_thread(interaction.message.id)
 
         if interaction.user.name == author:
             db.delete_raids(fields[8].get('value'), guild_name)
