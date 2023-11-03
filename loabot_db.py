@@ -162,6 +162,17 @@ class LBDB:
     
     def close(self):
         self.connection.close()
+
+    def get_my_raids(self, username, table):
+        group_list = []
+        try:
+            #info: [{'raid_id': 6, 'char_name': 'Kineticarti'}, {'raid_id': 7, 'char_name': 'Kineticarti'}]
+            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE name=?)', [username])
+            res = self.cur.fetchall()
+            return res            
+        
+        except mariadb.Error as e:
+            logger.warning(f'DB get my raids Error - {e}')
         
 
     def get_chars(self, user, table):

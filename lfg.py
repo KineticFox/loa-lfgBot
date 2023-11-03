@@ -947,8 +947,37 @@ def run(bot):
 
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
 
+    @bot.slash_command(name="my_raids")
+    async def my_raids(ctx):
+        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.use_db()
+        group_list = db.get_my_raids(ctx.author.name, tablename)
+        db.close()
 
+        panel = discord.Embed(
+            title='Group overview / Gruppenübersicht',
+            color=discord.Colour.green(),
+        )
+        chars = []
+        raid = []
+        title =[]
 
+        #chardicts = [{k: item[k] for k in item.keys()} for item in result]
+        for g in group_list:
+            chars.append(g.get('char_name'))
+            raid.append(g.get('raid'))
+            title.append(g.get("raid_title"))
+        e_chars = "\n".join(str(char) for char in chars)
+        e_raid = "\n".join(str(r) for r in raid)
+        e_title = "\n".join(str(t) for t in title)
+
+        panel.add_field(name='Char', value=e_chars)
+        panel.add_field(name='Raid', value=e_raid)
+        panel.add_field(name='Title', value=e_title)
+
+        await ctx.respond(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
+        
     
     bot.run(token)
 
