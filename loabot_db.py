@@ -7,7 +7,7 @@ import dotenv
 logger = logging.getLogger('DB')
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-formater = logging.Formatter('%(name)s:%(levelname)s: %(msg)s')
+formater = logging.Formatter('%(asctime)s - %(levelname)s %(name)s:%(msg)s', '%y-%m-%d, %H:%M') 
 handler.setFormatter(formater)
 logger.addHandler(handler)
 logger.propagate = False

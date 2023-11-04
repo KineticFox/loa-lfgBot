@@ -17,7 +17,7 @@ import re
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-formater = logging.Formatter('%(name)s:%(levelname)s: %(msg)s')
+formater = logging.Formatter('%(asctime)s - %(levelname)s %(name)s:%(msg)s', '%y-%m-%d, %H:%M')
 handler.setFormatter(formater)
 logger.addHandler(handler)
 logger.propagate = False
