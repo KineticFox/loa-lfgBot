@@ -226,20 +226,20 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'DB update mc Error - {e}')
     
-    def raidmember_check(self, raidid, username, table):
+    def raidmember_check(self, raidid, username, table): #TODO: change to user_id
         try:
             self.cur.execute(f'SELECT char_name FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE name=?)', [raidid, username])
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'raidmember check Error: {e}')
 
-    def add_groupmember(self, raid_id, user_name, charname, table):
+    def add_groupmember(self, raid_id, user_name, charname, table): #TODO: change to user_id
         try:
             self.cur.execute(f'INSERT INTO {table}_raidmember(raid_id, user_id, char_name) Values(?, (SELECT id FROM {table}_user WHERE name=?), ?)', [raid_id, user_name, charname])
         except mariadb.Error as e:
            logger.warning(f'Database add groupmember Error - {e}')
 
-    def remove_groupmember(self, name, raidid, table):
+    def remove_groupmember(self, name, raidid, table): #TODO: change to user_id
         try:
             self.cur.execute(f'DELETE FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE name=?)', [raidid, name]) 
         except mariadb.Error as e:
@@ -324,7 +324,7 @@ class LBDB:
             logger.warning(f'Database get message Error - {e}')
             return ['error']
 
-    def add_user(self, user, table):
+    def add_user(self, user, table): #TODO: change to user_id
         try:
             self.cur.execute(f'SELECT name FROM {table}_user WHERE name=?', [user])
             res = self.cur.fetchall()
@@ -363,7 +363,7 @@ class LBDB:
 
 
     
-    def add_chars(self, chars, cl, user, ilvl, role, table):
+    def add_chars(self, chars, cl, user, ilvl, role, table): #TODO: change to user_id
         try:
             self.cur.execute(f'SELECT id FROM {table}_user WHERE name=?', [user])
             user_check = self.cur.fetchone()
@@ -415,7 +415,7 @@ class LBDB:
         
         
     
-    def select_chars(self, username, table):
+    def select_chars(self, username, table): #TODO: change to user_id
         try:
             self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user WHERE name=?)', [username])
             res = self.cur.fetchall()
