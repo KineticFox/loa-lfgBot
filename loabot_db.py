@@ -90,7 +90,8 @@ class LBDB:
 
         CREATE TABLE {user} (
           id int NOT NULL,
-          name varchar(100) NOT NULL
+          name varchar(100) NOT NULL,
+          user_id bigint NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
         ALTER TABLE {chars}
@@ -176,7 +177,7 @@ class LBDB:
 
     def get_chars(self, user, table):
         try:
-            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where name=?)', [user]) 
+            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user]) 
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
@@ -439,3 +440,17 @@ class LBDB:
             logger.warning(f'Raw SQL Error: {e}')
             return f'command failed; {e}'
         
+    def all_user(self, table):
+        try:
+            self.cur.execute(f'SELECT name FROM {table}_user')
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'all user DB error - {e}')
+
+    def update_user(self, table, name, u_id):
+        try:
+            self.cur.execute(f'UPDATE {table}_user SET user_id=? WHERE name=?', [u_id, name])
+            #res = self.cur.fetchall()
+        except mariadb.Error as e:
+            logger.warning(f'update user DB error - {e}')

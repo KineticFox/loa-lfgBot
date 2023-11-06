@@ -799,8 +799,9 @@ def run(bot):
         if user is not None:
             raw_user = user.name
             username = raw_user.split('#')[0]
-            print
-            result = db.get_chars(username, tablename)
+            member = ctx.guild.get_member_named(username)
+            u_id = member.id
+            result = db.get_chars(u_id, tablename)
             #chardicts = [{k: item[k] for k in item.keys()} for item in result]
             for c in result:
                 names.append(c.get('char_name'))
@@ -816,8 +817,10 @@ def run(bot):
             db.close()
             await ctx.respond(f'Characters - {username}', embed=panel, ephemeral=True)
                 
-        else:    
-            result = db.get_chars(ctx.author.name, tablename)
+        else:
+            member = ctx.guild.get_member_named(ctx.author.name)
+            u_id = member.id    
+            result = db.get_chars(u_id, tablename)
             #chardicts = [{k: item[k] for k in item.keys()} for item in result]
             for c in result:
                 names.append(c.get('char_name'))
@@ -982,7 +985,22 @@ def run(bot):
         panel.add_field(name='Title', value=e_title)
 
         await ctx.respond(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
+
+    @bot.slash_command(name='user_maintenance')
+    async def maintenance(ctx):
+        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.use_db()
+        await ctx.defer()
+        all_names= db.all_user(tablename)
+
+        for name in all_names:
+            n = name['name']
+            member = ctx.guild.get_member_named(name['name'])
+            u_id = member.id
+            db.update_user(tablename, n, u_id)
         
+        await ctx.followup.send('done', ephemeral=True)
     
     bot.run(token)
 
