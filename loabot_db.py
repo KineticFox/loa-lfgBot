@@ -332,7 +332,7 @@ class LBDB:
                 logger.info(f'User {user} already exists in DB')
                 return f'User {user} already exists in DB'
             else:
-                self.cur.execute(f'INSERT INTO {table}_user(name, user_id) VALUES (?)', [user, user_id])
+                self.cur.execute(f'INSERT INTO {table}_user(name, user_id) VALUES (?,?)', [user, user_id])
                 return f'added your DC-User "{user}" to the DB'
         except mariadb.Error as e:
             logger.warning(f'Add user insert error: {e}')

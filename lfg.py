@@ -140,7 +140,7 @@ class JoinRaid(discord.ui.View):
         self.selectedChar = ''
         self.dpsvalue = []
         self.suppvalue= []
-        self.disabled = True
+        #self.disabled = True
         self.parentview = self
         self.embed = None
         self.group_id = None
@@ -161,9 +161,8 @@ class JoinRaid(discord.ui.View):
         member = interaction.guild.get_member_named(user)
         u_id = member.id  
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
-        self.embed = interaction.message.embeds[0]                
+        self.embed = interaction.message.embeds[0]             
         await interaction.response.defer()
-        time.sleep(4)
         result = db.select_chars(u_id, guild_name)
         edict = self.embed.to_dict()
         fields = edict.get('fields')
@@ -187,7 +186,7 @@ class JoinRaid(discord.ui.View):
 
         if result is None:
             db.close()
-            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!') #response.send_message('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!',  ephemeral=True)        
+            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
         elif len(result) == 0:
             db.close()
             await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
@@ -207,6 +206,7 @@ class JoinRaid(discord.ui.View):
             chanell = await interaction.guild.fetch_channel(c_id)
             thread = chanell.get_thread(m_id)
             await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
+
 
 
     @discord.ui.button(
