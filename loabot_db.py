@@ -250,7 +250,7 @@ class LBDB:
             if delete == 'no':
                 self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
                 res = self.cur.fetchone()
-                if len(res) == 0:
+                if res is None :
                     return 'This Char does not exist / Dieser Char existiert nicht'
                 else:
                     self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
