@@ -164,10 +164,10 @@ class LBDB:
     def close(self):
         self.connection.close()
 
-    def get_my_raids(self, username, table):
+    def get_my_raids(self, user_id, table):
         group_list = []
         try:
-            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id  FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE name=?)', [username])
+            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id  FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
             res = self.cur.fetchall()
             return res            
         
@@ -175,9 +175,9 @@ class LBDB:
             logger.warning(f'DB get my raids Error - {e}')
         
 
-    def get_chars(self, user, table):
+    def get_chars(self, user_id, table):
         try:
-            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user]) 
+            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user_id]) 
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
@@ -226,22 +226,22 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'DB update mc Error - {e}')
     
-    def raidmember_check(self, raidid, username, table): #TODO: change to user_id
+    def raidmember_check(self, raidid, user_id, table):
         try:
-            self.cur.execute(f'SELECT char_name FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE name=?)', [raidid, username])
+            self.cur.execute(f'SELECT char_name FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [raidid, user_id])
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'raidmember check Error: {e}')
 
-    def add_groupmember(self, raid_id, user_name, charname, table): #TODO: change to user_id
+    def add_groupmember(self, raid_id, user_id, charname, table):
         try:
-            self.cur.execute(f'INSERT INTO {table}_raidmember(raid_id, user_id, char_name) Values(?, (SELECT id FROM {table}_user WHERE name=?), ?)', [raid_id, user_name, charname])
+            self.cur.execute(f'INSERT INTO {table}_raidmember(raid_id, user_id, char_name) Values(?, (SELECT id FROM {table}_user WHERE user_id=?), ?)', [raid_id, user_id, charname])
         except mariadb.Error as e:
            logger.warning(f'Database add groupmember Error - {e}')
 
-    def remove_groupmember(self, name, raidid, table): #TODO: change to user_id
+    def remove_groupmember(self, user_id, raidid, table):
         try:
-            self.cur.execute(f'DELETE FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE name=?)', [raidid, name]) 
+            self.cur.execute(f'DELETE FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [raidid, user_id]) 
         except mariadb.Error as e:
             logger.warning(f'Database remove Groupmember Error: {e}')
 
@@ -324,15 +324,15 @@ class LBDB:
             logger.warning(f'Database get message Error - {e}')
             return ['error']
 
-    def add_user(self, user, table): #TODO: change to user_id
+    def add_user(self, user, user_id, table):
         try:
-            self.cur.execute(f'SELECT name FROM {table}_user WHERE name=?', [user])
+            self.cur.execute(f'SELECT name FROM {table}_user WHERE user_id=?', [user_id])
             res = self.cur.fetchall()
             if len(res) != 0:
                 logger.info(f'User {user} already exists in DB')
                 return f'User {user} already exists in DB'
             else:
-                self.cur.execute(f'INSERT INTO {table}_user(name) VALUES (?)', [user])
+                self.cur.execute(f'INSERT INTO {table}_user(name, user_id) VALUES (?)', [user, user_id])
                 return f'added your DC-User "{user}" to the DB'
         except mariadb.Error as e:
             logger.warning(f'Add user insert error: {e}')
@@ -363,22 +363,22 @@ class LBDB:
 
 
     
-    def add_chars(self, chars, cl, user, ilvl, role, table): #TODO: change to user_id
+    def add_chars(self, chars, cl, user, ilvl, role, table, user_id):
         try:
-            self.cur.execute(f'SELECT id FROM {table}_user WHERE name=?', [user])
+            self.cur.execute(f'SELECT id FROM {table}_user WHERE user_id=?', [user_id])
             user_check = self.cur.fetchone()
             if user_check is None or len(user_check) == 0:
-                self.add_user(user, table)
-                self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM {table}_user WHERE name=?), ?, ?, ?, ?)', [user, chars, cl, ilvl, role]) #"{user}" "{chars}" "{cl}" "{ilvl}" "{role}"
+                self.add_user(user, user_id, table)
+                self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM {table}_user WHERE user_id=?), ?, ?, ?, ?)', [user_id, chars, cl, ilvl, role]) 
                 return f'Added your char {chars} to the DB'
             else:                
-                self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE char_name=?', [chars]) #"{chars}"
+                self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE char_name=?', [chars]) 
                 res = self.cur.fetchall()
                 if len(res) != 0:
                     logger.info(f'Char {chars} already exists in DB')
                     return f'Char {chars} already exists in DB'
                 else:
-                    self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM {table}_user WHERE name=?), ?, ?, ?, ?)', [user, chars, cl, ilvl, role]) #"{user}" "{chars}" "{cl}" "{ilvl}" "{role}"
+                    self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM {table}_user WHERE user_id=?), ?, ?, ?, ?)', [user_id, chars, cl, ilvl, role]) 
                     return f'Added your char {chars} to the DB'
         except mariadb.Error as e:
             logger.warning(f'Add user insertion error: {e}')
@@ -415,9 +415,9 @@ class LBDB:
         
         
     
-    def select_chars(self, username, table): #TODO: change to user_id
+    def select_chars(self, user_id, table):
         try:
-            self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user WHERE name=?)', [username])
+            self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
