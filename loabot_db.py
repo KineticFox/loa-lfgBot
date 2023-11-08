@@ -50,7 +50,8 @@ class LBDB:
           class varchar(50) NOT NULL,
           ilvl int NOT NULL,
           role varchar(20) NOT NULL,
-          char_name varchar(70) NOT NULL
+          char_name varchar(70) NOT NULL,
+          emoji varchar(50) NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
         CREATE TABLE {groups} (
@@ -448,9 +449,24 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'all user DB error - {e}')
 
+    def all_chars(self, table):
+        try:
+            self.cur.execute(f'SELECT char_name, class FROM {table}_chars')
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'all chars DB error - {e}')
+
     def update_user(self, table, name, u_id):
         try:
             self.cur.execute(f'UPDATE {table}_user SET user_id=? WHERE name=?', [u_id, name])
             #res = self.cur.fetchall()
         except mariadb.Error as e:
             logger.warning(f'update user DB error - {e}')
+    
+    def update_emoji(self, table, name, emoji):
+        try:
+            self.cur.execute(f'UPDATE {table}_chars SET emoji=? WHERE char_name=?', [emoji, name])
+            #res = self.cur.fetchall()
+        except mariadb.Error as e:
+            logger.warning(f'update emoji DB error - {e}')

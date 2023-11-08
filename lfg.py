@@ -1041,12 +1041,29 @@ def run(bot):
         db.use_db()
         await ctx.defer(ephemeral=True)
         all_names= db.all_user(tablename)
+        all_chars = db.all_chars(tablename)
 
-        for name in all_names:
-            n = name['name']
-            member = ctx.guild.get_member_named(name['name'])
-            u_id = member.id
-            db.update_user(tablename, n, u_id)
+        classes_file = open('data/loa_data.json')
+        data = json.load(classes_file)
+        
+        classes_file.close()
+
+        #for name in all_names:
+        #    n = name['name']
+        #    member = ctx.guild.get_member_named(name['name'])
+        #    u_id = member.id
+        #    db.update_user(tablename, n, u_id)
+
+        for char in all_chars:
+            emoji = ''
+            name = char['char_name']
+            for i in data['emojis']:
+                res = re.search('<:(.*):',i)
+                e = res.group(1)
+                if char['class'].lower() == e:
+                    emoji = i
+            
+            db.update_emoji(tablename, name, emoji)
         
         await ctx.followup.send('done', ephemeral=True)
     
