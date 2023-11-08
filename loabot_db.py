@@ -363,13 +363,13 @@ class LBDB:
 
 
     
-    def add_chars(self, chars, cl, user, ilvl, role, table, user_id):
+    def add_chars(self, chars, cl, user, ilvl, role, table, user_id, emoji):
         try:
             self.cur.execute(f'SELECT id FROM {table}_user WHERE user_id=?', [user_id])
             user_check = self.cur.fetchone()
             if user_check is None or len(user_check) == 0:
                 self.add_user(user, user_id, table)
-                self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM {table}_user WHERE user_id=?), ?, ?, ?, ?)', [user_id, chars, cl, ilvl, role]) 
+                self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role, emoji) VALUES((SELECT id FROM {table}_user WHERE user_id=?), ?, ?, ?, ?, ?)', [user_id, chars, cl, ilvl, role, emoji]) 
                 return f'Added your char {chars} to the DB'
             else:                
                 self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE char_name=?', [chars]) 
@@ -378,7 +378,7 @@ class LBDB:
                     logger.info(f'Char {chars} already exists in DB')
                     return f'Char {chars} already exists in DB'
                 else:
-                    self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role) VALUES((SELECT id FROM {table}_user WHERE user_id=?), ?, ?, ?, ?)', [user_id, chars, cl, ilvl, role]) 
+                    self.cur.execute(f'INSERT INTO {table}_chars(user_id, char_name, class, ilvl, role, emoji) VALUES((SELECT id FROM {table}_user WHERE user_id=?), ?, ?, ?, ?,?)', [user_id, chars, cl, ilvl, role, emoji]) 
                     return f'Added your char {chars} to the DB'
         except mariadb.Error as e:
             logger.warning(f'Add user insertion error: {e}')
@@ -417,7 +417,7 @@ class LBDB:
     
     def select_chars(self, user_id, table):
         try:
-            self.cur.execute(f'SELECT char_name FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
+            self.cur.execute(f'SELECT char_name, emoji FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:

@@ -397,7 +397,7 @@ class JoinDialogue(discord.ui.View):
             result = self.db.select_chars(self.user_id, self.guild_name)  
             #temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
             for d in result:
-                self.user_chars.append(d.get('char_name'))
+                self.user_chars.append(f'{d.get("char_name")} {d.get("emoji")}')
 
 
         setup_chars()
@@ -522,10 +522,13 @@ class CharSelect(discord.ui.Select):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
 
+        charname = selectedChar.split(' ')[0]
+        capital_charname = charname.capitalize()
+
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
         #get selected char from db for role
-        role = self.db.get_charRole(selectedChar, guild_name)
+        role = self.db.get_charRole(capital_charname, guild_name)
         #get raid id, user id
 
         #check if user is already connected to this raid id --> raidmember table
@@ -546,7 +549,7 @@ class CharSelect(discord.ui.Select):
             m_id = message['m_id']
 
             #get char ilvl
-            ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
+            ilvl = self.db.get_char_ilvl(capital_charname, guild_name)
             char_ilvl = ilvl['ilvl']
 
 
@@ -790,8 +793,23 @@ def run(bot):
         db.use_db()
         member = ctx.guild.get_member_named(ctx.author.name)
         u_id = member.id
+        await ctx.defer(ephemeral=True)
+        classes_file = open('data/loa_data.json')
+        data = json.load(classes_file)
+        
+        emoji = ''
+
+        for i in data['emojis']:
+            res = re.search('<:(.*):',i)
+            e = res.group(1)
+            if cl.lower() == e:
+                emoji = i
+
+
+        classes_file.close()
+
         table = ''.join(l for l in ctx.guild.name if l.isalnum())
-        result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table, u_id)
+        result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table, u_id, emoji)
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
