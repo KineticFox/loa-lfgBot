@@ -12,12 +12,13 @@ from time import sleep
 import asyncio
 import logging
 import re
+import time
 
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-formater = logging.Formatter('%(name)s:%(levelname)s: %(msg)s')
+formater = logging.Formatter('%(asctime)s - %(levelname)s %(name)s:%(msg)s', '%y-%m-%d, %H:%M')
 handler.setFormatter(formater)
 logger.addHandler(handler)
 logger.propagate = False
@@ -67,8 +68,11 @@ class LegionRaidCreation(discord.ui.View):
         disabled=True
     )
     async def button_callback(self, button, interaction):
+        #await interaction.response.defer()
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
+        if chanell is None:
+            chanell = await interaction.guild.fetch_channel(interaction.channel.id)
 
         edict = embed.to_dict()
         fields = edict.get('fields')
@@ -101,12 +105,11 @@ class LegionRaidCreation(discord.ui.View):
         embed.add_field(name='DPS', value=chr(173))
         embed.add_field(name='SUPP', value=chr(173))
         
-        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed ,view=JoinRaid())
+        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed , view=JoinRaid())
         thread = await m.create_thread(name=f"{embed.title}")#, type=discord.ChannelType.public_thread)
         thread_id = thread.id
         
         r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
-        print(r_id)
         if r_id is None:
             self.db.close()
             logger.warning(f'Raid creation failed for {interaction.user.name}')
@@ -114,16 +117,18 @@ class LegionRaidCreation(discord.ui.View):
             await m.delete()
             await thread.delete()
             
-        else: 
+        else:
+             
             raid_id = r_id['LAST_INSERT_ID()']
             self.db.add_message(m.id, raid_id, guild_name)
             embed.add_field(name='ID', value=raid_id)
-
+            await interaction.response.defer()
+            await interaction.delete_original_response()
             await m.edit(embed=embed ,view=JoinRaid())
             self.db.close()
             logger.debug(f'stored raid group with ID {raid_id}')
-            await interaction.response.defer()
-            await interaction.delete_original_response()
+            
+
 
 class JoinRaid(discord.ui.View):
 
@@ -135,10 +140,11 @@ class JoinRaid(discord.ui.View):
         self.selectedChar = ''
         self.dpsvalue = []
         self.suppvalue= []
-        self.disabled = True
+        #self.disabled = True
         self.parentview = self
         self.embed = None
         self.group_id = None
+        #self.message = message
 
     @discord.ui.button(
         label='Join raid',
@@ -149,11 +155,15 @@ class JoinRaid(discord.ui.View):
     async def join_callback(self, button, interaction):
         db = LBDB()
         db.use_db()
-
+        m_id = interaction.message.id
+        c_id = interaction.channel.id
         user = interaction.user.name
+        member = interaction.guild.get_member_named(user)
+        u_id = member.id  
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
-        result = db.select_chars(user, guild_name)
-        self.embed = interaction.message.embeds[0]
+        self.embed = interaction.message.embeds[0]             
+        await interaction.response.defer()
+        result = db.select_chars(u_id, guild_name)
         edict = self.embed.to_dict()
         fields = edict.get('fields')
         group_id = fields[8].get('value') #groupd tabel id
@@ -162,7 +172,7 @@ class JoinRaid(discord.ui.View):
         raid = fields[1].get('value')
         raidname = raid.split(' -')[0]
 
-
+        
         res = db.get_raid_mc(raidname)
         mc = res['member']
 
@@ -172,32 +182,31 @@ class JoinRaid(discord.ui.View):
 
         
         #check if user is already connected to this raid id --> raidmember table
-        join_check = db.raidmember_check(group_id, interaction.user.name, guild_name)
+        join_check = db.raidmember_check(group_id, u_id, guild_name)
 
         if result is None:
             db.close()
-            await interaction.response.send_message('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!',  ephemeral=True)        
+            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
         elif len(result) == 0:
             db.close()
-            await interaction.response.send_message('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
+            await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
         elif join_check is not None:
             db.close()
             char = join_check['char_name']
-            await interaction.response.send_message(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
+            await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
         elif g_mc >= mc:
             db.close()
-            await interaction.response.send_message(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
+            await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
         else:
             panel = discord.Embed(
                 title='Please choose your Character / Bitte wähle deinen Charakter',
                 color=discord.Colour.blue(),
             )
 
-            chanell = interaction.guild.get_channel(interaction.channel.id)
-            thread = chanell.get_thread(interaction.message.id)
-            message = interaction.message.id
-            await interaction.response.edit_message(view=self)
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, message, user, guild_name), embed=panel)
+            chanell = await interaction.guild.fetch_channel(c_id)
+            thread = chanell.get_thread(m_id)
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
+
 
 
     @discord.ui.button(
@@ -222,6 +231,8 @@ class JoinRaid(discord.ui.View):
             thread = None
 
             chanell = interaction.guild.get_channel(interaction.channel.id)
+            if chanell is None:
+                chanell = await interaction.guild.fetch_channel(interaction.channel.id)
             thread = chanell.get_thread(interaction.message.id)
             t_member = await thread.fetch_members()
 
@@ -251,7 +262,12 @@ class JoinRaid(discord.ui.View):
         count = len(self.suppvalue) + len(self.dpsvalue)
         embed = interaction.message.embeds[0]
         chanell = interaction.guild.get_channel(interaction.channel.id)
+        if chanell is None:
+            chanell = await interaction.guild.fetch_channel(interaction.channel.id)
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+
+        member = interaction.guild.get_member_named(interaction.user.name)
+        u_id = member.id 
 
         thread = chanell.get_thread(interaction.message.id)
         threadMeembers = await thread.fetch_members()
@@ -262,7 +278,7 @@ class JoinRaid(discord.ui.View):
         group_id = fields[8].get('value')
 
         #get char of user
-        char_result = db.raidmember_check(group_id, interaction.user.name, guild_name)
+        char_result = db.raidmember_check(group_id, u_id, guild_name)
         
 
         #check if user is raid member 
@@ -299,7 +315,7 @@ class JoinRaid(discord.ui.View):
                 new_dps_string = re.sub(re_pattern, '', dps_string, 1)
                 embed.set_field_at(6, name='DPS', value=new_dps_string)
                 embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                db.remove_groupmember(interaction.user.name, group_id, guild_name)
+                db.remove_groupmember(u_id, group_id, guild_name)
 
             else:
                 mc -= 1
@@ -314,7 +330,7 @@ class JoinRaid(discord.ui.View):
                 embed.set_field_at(7, name='SUPP', value=new_supp_string)
                 embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
 
-                db.remove_groupmember(interaction.user.name, group_id, guild_name)
+                db.remove_groupmember(u_id, group_id, guild_name)
 
             if embed.author.name == interaction.user.name:
                 
@@ -349,6 +365,8 @@ class JoinRaid(discord.ui.View):
         thread = None
 
         chanell = interaction.guild.get_channel(interaction.channel.id)
+        if chanell is None:
+            chanell = await interaction.guild.fetch_channel(interaction.channel.id)
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
         thread = chanell.get_thread(interaction.message.id)
@@ -366,20 +384,20 @@ class JoinRaid(discord.ui.View):
 #--------------------- Subclassed view elements -----------------------------------#
 
 class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview, db,group_id, thread, message, user_name, guild_name):
+    def __init__(self, orgview, db,group_id, thread, message, user_id, guild_name):
         self.orgview = orgview
         self.db = db
         self.user_chars = []
         self.g_id = group_id
         self.thread = thread
         self.message = message
-        self.username = user_name
+        self.user_id = user_id
         self.guild_name = guild_name
         def setup_chars():
-            result = self.db.select_chars(self.username, self.guild_name)  
+            result = self.db.select_chars(self.user_id, self.guild_name)  
             #temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
             for d in result:
-                self.user_chars.append(d.get('char_name'))
+                self.user_chars.append(f'{d.get("char_name")} {d.get("emoji")}')
 
 
         setup_chars()
@@ -428,7 +446,7 @@ class KickDialogue(discord.ui.Select):
                 user = m
 
         #get char of user
-        char_result = db.raidmember_check(group_id, user.name, guild_name)
+        char_result = db.raidmember_check(group_id, user.id, guild_name)
         
         if char_result is None:
             db.close()
@@ -459,7 +477,7 @@ class KickDialogue(discord.ui.Select):
                 new_dps_string = re.sub(re_pattern, '', dps_string, 1)
                 embed.set_field_at(6, name='DPS', value=new_dps_string)
                 embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                db.remove_groupmember(interaction.user.name, group_id, guild_name)
+                db.remove_groupmember(user.id, group_id, guild_name)
 
             else:
                 mc -= 1
@@ -474,7 +492,7 @@ class KickDialogue(discord.ui.Select):
                 embed.set_field_at(7, name='SUPP', value=new_supp_string)
                 embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
 
-                db.remove_groupmember(interaction.user.name, group_id, guild_name)
+                db.remove_groupmember(user.id, group_id, guild_name)
 
             db.close()
 
@@ -504,20 +522,23 @@ class CharSelect(discord.ui.Select):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
 
+        charname = selectedChar.split(' ')[0]
+        capital_charname = charname.capitalize()
+
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
         #get selected char from db for role
-        role = self.db.get_charRole(selectedChar, guild_name)
+        role = self.db.get_charRole(capital_charname, guild_name)
         #get raid id, user id
 
         #check if user is already connected to this raid id --> raidmember table
-        check = self.db.raidmember_check(self.view.g_id, interaction.user.name, guild_name)
+        check = self.db.raidmember_check(self.view.g_id, self.view.user_id, guild_name)
 
         #disable select menu to prevent unintended char switching
         self.disabled = True
 
         if(check is None):
-            self.db.add_groupmember(self.view.g_id, interaction.user.name, selectedChar, guild_name)
+            self.db.add_groupmember(self.view.g_id, self.view.user_id, selectedChar, guild_name)
 
             #get mc from raid
             res = self.db.get_group(self.view.g_id, guild_name)
@@ -528,7 +549,7 @@ class CharSelect(discord.ui.Select):
             m_id = message['m_id']
 
             #get char ilvl
-            ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
+            ilvl = self.db.get_char_ilvl(capital_charname, guild_name)
             char_ilvl = ilvl['ilvl']
 
 
@@ -562,6 +583,7 @@ class CharSelect(discord.ui.Select):
             await self.view.thread.add_user(interaction.user)
 
             await interaction.response.edit_message(view=self.view)
+            #await interaction.followup.edit_message
             channel = interaction.guild.get_channel(interaction.channel.id)
             m = await channel.fetch_message(m_id)
             await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
@@ -638,7 +660,7 @@ class RaidModeSelect(discord.ui.Select):
 
 
 
-#----------------------------------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------- Commands --------------------------------------------------------------------#
 
 classes = []
 raid_type = ['Legion', 'Guardian', 'Abyssal']
@@ -738,6 +760,7 @@ def run(bot):
     @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title / Erstellt eine lfg-Party, keine emojis erlaubt.")
     async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'Date + time or short text', required=True, max_length=40)):
         time = date
+        #await ctx.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
 
@@ -768,22 +791,42 @@ def run(bot):
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
         db = LBDB()
         db.use_db()
+        member = ctx.guild.get_member_named(ctx.author.name)
+        u_id = member.id
+        await ctx.defer(ephemeral=True)
+        classes_file = open('data/loa_data.json')
+        data = json.load(classes_file)
+        
+        emoji = ''
+
+        for i in data['emojis']:
+            res = re.search('<:(.*):',i)
+            e = res.group(1)
+            if cl.lower() == e:
+                emoji = i
+
+
+        classes_file.close()
+
         table = ''.join(l for l in ctx.guild.name if l.isalnum())
-        result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table)
+        result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table, u_id, emoji)
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="update_char", description="Updates the i-lvl of given char or deletes it / Ändert das i-lvl des Charakters oder löscht ihn")
     async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True, max_length=69), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        await ctx.defer(ephemeral=True)
+        
         db = LBDB()
         db.use_db()
         result = db.update_chars(charname, ilvl, delete, tablename)
         db.close()
-        await ctx.respond(result, ephemeral=True, delete_after=20)
+        await ctx.send_followup(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="show_chars", description="Shows all chars of the user / Zeigt alle Charaktere des Spielers an")
     async def db_getchars(ctx, user: discord.Member = None):
+        await ctx.defer(ephemeral=True)
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         panel = discord.Embed(
             title='Char overview',
@@ -799,8 +842,9 @@ def run(bot):
         if user is not None:
             raw_user = user.name
             username = raw_user.split('#')[0]
-            print
-            result = db.get_chars(username, tablename)
+            member = ctx.guild.get_member_named(username)
+            u_id = member.id
+            result = db.get_chars(u_id, tablename)
             #chardicts = [{k: item[k] for k in item.keys()} for item in result]
             for c in result:
                 names.append(c.get('char_name'))
@@ -814,10 +858,12 @@ def run(bot):
             panel.add_field(name='Class', value=e_class)
             panel.add_field(name='ilvl', value=e_ilvl)
             db.close()
-            await ctx.respond(f'Characters - {username}', embed=panel, ephemeral=True)
+            await ctx.followup.send(f'Characters - {username}', embed=panel, ephemeral=True)
                 
-        else:    
-            result = db.get_chars(ctx.author.name, tablename)
+        else:
+            member = ctx.guild.get_member_named(ctx.author.name)
+            u_id = member.id    
+            result = db.get_chars(u_id, tablename)
             #chardicts = [{k: item[k] for k in item.keys()} for item in result]
             for c in result:
                 names.append(c.get('char_name'))
@@ -832,7 +878,7 @@ def run(bot):
             panel.add_field(name='Class', value=e_class)
             panel.add_field(name='ilvl', value=e_ilvl)
             db.close()
-            await ctx.respond(f'Characters - {ctx.author.name}', embed=panel, ephemeral=True)
+            await ctx.followup.send(f'Characters - {ctx.author.name}', embed=panel, ephemeral=True)
 
     @bot.slash_command(name="update_raids", description="Updates Raids")
     async def db_updateraids(ctx):
@@ -901,12 +947,13 @@ def run(bot):
     
     @bot.slash_command(name="clear")
     async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)):
+        await ctx.defer(ephemeral=True)
         if amount:
             #await ctx.channel.purge(limit=amount, bulk=False)
             #await ctx.respond(f'deleted {amount} messages',ephemeral=True, delete_after=10)
             for i in range(0, amount):
                 await ctx.channel.purge(limit=5, bulk=False)
-                await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
+                await ctx.followup.send(f'deleted {amount -1} messages', ephemeral=True, delete_after=10)
                 sleep(10)
                 
         else:
@@ -949,10 +996,14 @@ def run(bot):
 
     @bot.slash_command(name="my_raids")
     async def my_raids(ctx):
+        await ctx.defer(ephemeral=True)
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
         db.use_db()
-        group_list = db.get_my_raids(ctx.author.name, tablename)
+        member = ctx.guild.get_member_named(ctx.author.name)
+        u_id = member.id  
+        
+        group_list = db.get_my_raids(u_id, tablename)
         db.close()
 
         panel = discord.Embed(
@@ -981,8 +1032,40 @@ def run(bot):
         panel.add_field(name='Raid', value=e_raid)
         panel.add_field(name='Title', value=e_title)
 
-        await ctx.respond(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
+        await ctx.followup.send(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
+
+    @bot.slash_command(name='user_maintenance')
+    async def maintenance(ctx):
+        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.use_db()
+        await ctx.defer(ephemeral=True)
+        all_names= db.all_user(tablename)
+        all_chars = db.all_chars(tablename)
+
+        classes_file = open('data/loa_data.json')
+        data = json.load(classes_file)
         
+        classes_file.close()
+
+        #for name in all_names:
+        #    n = name['name']
+        #    member = ctx.guild.get_member_named(name['name'])
+        #    u_id = member.id
+        #    db.update_user(tablename, n, u_id)
+
+        for char in all_chars:
+            emoji = ''
+            name = char['char_name']
+            for i in data['emojis']:
+                res = re.search('<:(.*):',i)
+                e = res.group(1)
+                if char['class'].lower() == e:
+                    emoji = i
+            
+            db.update_emoji(tablename, name, emoji)
+        
+        await ctx.followup.send('done', ephemeral=True)
     
     bot.run(token)
 
