@@ -804,6 +804,8 @@ def run(bot):
             e = res.group(1)
             if cl.lower() == e:
                 emoji = i
+            elif e == 'artistt' and cl.lower() == 'artist':
+                emoji = i
 
 
         classes_file.close()
@@ -1062,7 +1064,8 @@ def run(bot):
                 e = res.group(1)
                 if char['class'].lower() == e:
                     emoji = i
-            
+                elif e == 'artistt' and char['class'].lower() == 'artist':
+                    emoji = i
             db.update_emoji(tablename, name, emoji)
         
         await ctx.followup.send('done', ephemeral=True)
