@@ -109,7 +109,7 @@ class LegionRaidCreation(discord.ui.View):
         embed.add_field(name='SUPP', value=chr(173))
         
         try:
-            m = await chanell.send('A Wild Raid spawns, come and join', embed=embed , view=JoinRaid())
+            m = await chanell.send('A Wild Raid spawns, come and join', embed=embed)
             thread = await m.create_thread(name=f"{embed.title}")
             thread_id = thread.id        
             r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
@@ -177,7 +177,6 @@ class JoinRaid(discord.ui.View):
         raid = fields[1].get('value')
         raidname = raid.split(' -')[0]
 
-        
         res = db.get_raid_mc(raidname)
         mc = res['member']
 
@@ -211,6 +210,7 @@ class JoinRaid(discord.ui.View):
             chanell = await interaction.guild.fetch_channel(c_id)
             thread = chanell.get_thread(m_id)
             await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
+
 
 
 
@@ -413,6 +413,7 @@ class JoinDialogue(discord.ui.View):
         self.message = message
         self.user_id = user_id
         self.guild_name = guild_name
+        #self.orgview.children[0].disabled=True
         def setup_chars():
             result = self.db.select_chars(self.user_id, self.guild_name)  
             #temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
@@ -460,7 +461,6 @@ class KickDialogue(discord.ui.Select):
         group_id = fields[8].get('value')
 
         member_name = self.values[0]
-
         user = {}
         for m in self.memberlist:
             if m.name == member_name:
