@@ -70,9 +70,12 @@ class LegionRaidCreation(discord.ui.View):
     async def button_callback(self, button, interaction):
         #await interaction.response.defer()
         embed = interaction.message.embeds[0]
-        chanell = interaction.guild.get_channel(interaction.channel.id)
-        if chanell is None:
+        chanell = {}
+
+        if interaction.guild.get_channel(interaction.channel.id) is None:
             chanell = await interaction.guild.fetch_channel(interaction.channel.id)
+        else:
+            chanell = interaction.guild.get_channel(interaction.channel.id)
 
         edict = embed.to_dict()
         fields = edict.get('fields')
@@ -105,20 +108,22 @@ class LegionRaidCreation(discord.ui.View):
         embed.add_field(name='DPS', value=chr(173))
         embed.add_field(name='SUPP', value=chr(173))
         
-        m = await chanell.send('A Wild Raid spawns, come and join', embed=embed , view=JoinRaid())
-        thread = await m.create_thread(name=f"{embed.title}")#, type=discord.ChannelType.public_thread)
-        thread_id = thread.id
-        
-        r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
-        if r_id is None:
+        try:
+            m = await chanell.send('A Wild Raid spawns, come and join', embed=embed , view=JoinRaid())
+            thread = await m.create_thread(name=f"{embed.title}")
+            thread_id = thread.id        
+            r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
+        except discord.errors as e:
+            logger.warning(f'DC Error in creatRaid callback - {e}')
+
+
+        if r_id is None or len(r_id) == 0:
             self.db.close()
             logger.warning(f'Raid creation failed for {interaction.user.name}')
             await interaction.response.send_message('Something went wrong!',  ephemeral=True)
             await m.delete()
-            await thread.delete()
-            
-        else:
-             
+            await thread.delete()   
+        else:             
             raid_id = r_id['LAST_INSERT_ID()']
             self.db.add_message(m.id, raid_id, guild_name)
             embed.add_field(name='ID', value=raid_id)
@@ -230,9 +235,11 @@ class JoinRaid(discord.ui.View):
             thread_id = None
             thread = None
 
-            chanell = interaction.guild.get_channel(interaction.channel.id)
-            if chanell is None:
+            chanell = {}
+            if interaction.guild.get_channel(interaction.channel.id) is None:
                 chanell = await interaction.guild.fetch_channel(interaction.channel.id)
+            else:
+                chanell = interaction.guild.get_channel(interaction.channel.id)
             thread = chanell.get_thread(interaction.message.id)
             t_member = await thread.fetch_members()
 
@@ -261,9 +268,11 @@ class JoinRaid(discord.ui.View):
         thread = None
         count = len(self.suppvalue) + len(self.dpsvalue)
         embed = interaction.message.embeds[0]
-        chanell = interaction.guild.get_channel(interaction.channel.id)
-        if chanell is None:
+        chanell = {}
+        if interaction.guild.get_channel(interaction.channel.id) is None:
             chanell = await interaction.guild.fetch_channel(interaction.channel.id)
+        else:
+            chanell = interaction.guild.get_channel(interaction.channel.id)
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
         member = interaction.guild.get_member_named(interaction.user.name)
@@ -280,7 +289,6 @@ class JoinRaid(discord.ui.View):
         #get char of user
         char_result = db.raidmember_check(group_id, u_id, guild_name)
         
-
         #check if user is raid member 
 
         group_result = db.get_group(group_id, guild_name)
@@ -295,12 +303,13 @@ class JoinRaid(discord.ui.View):
         else:
             char = char_result['char_name']
             #get role of user
-            role_result = db.get_charRole(char, guild_name)
+            clean_char_name = char.split(' ')[0]
+            role_result = db.get_charRole(clean_char_name, guild_name)
             role = role_result['role']
 
             
 
-            ilvl = db.get_char_ilvl(char, guild_name)
+            ilvl = db.get_char_ilvl(clean_char_name, guild_name)
             char_ilvl = ilvl['ilvl']
 
             if role == 'DPS':
@@ -339,12 +348,20 @@ class JoinRaid(discord.ui.View):
 
                 embed.set_author(name=db_user_name)
                 db.close()
-                await interaction.response.edit_message(embed=embed, view=self)
-                await thread.remove_user(interaction.user)
+                try:
+                    await interaction.response.edit_message(embed=embed, view=self)
+                    await thread.remove_user(interaction.user)
+                except discord.errors as e:
+                    logger.warning(f'DC Error in leave callback- {e}')
+                    await interaction.response.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True)
             else:
                 db.close()
-                await interaction.response.edit_message(embed=embed, view=self)
-                await thread.remove_user(interaction.user)
+                try:
+                    await interaction.response.edit_message(embed=embed, view=self)
+                    await thread.remove_user(interaction.user)
+                except discord.errors as e:
+                    logger.warning(f'DC Error in leave callback - {e}')
+                    await interaction.response.send_message('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
                     
     @discord.ui.button(
         label='Delete',
@@ -364,9 +381,12 @@ class JoinRaid(discord.ui.View):
         thread_id = None
         thread = None
 
-        chanell = interaction.guild.get_channel(interaction.channel.id)
-        if chanell is None:
+        chanell = {}
+        if interaction.guild.get_channel(interaction.channel.id) is None:
             chanell = await interaction.guild.fetch_channel(interaction.channel.id)
+        else:
+            chanell = interaction.guild.get_channel(interaction.channel.id)
+
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
         thread = chanell.get_thread(interaction.message.id)
@@ -434,6 +454,7 @@ class KickDialogue(discord.ui.Select):
         embed = interaction.message.embeds[0]
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
+        await interaction.response.defer(ephemeral=True)
         embed_dict = embed.to_dict()
         fields = embed_dict.get('fields')
         group_id = fields[8].get('value')
@@ -450,19 +471,20 @@ class KickDialogue(discord.ui.Select):
         
         if char_result is None:
             db.close()
-            await interaction.response.send_message('User is not in thread / Benutzer ist nicht im Raid', ephemeral=True)
+            await interaction.followup.send('User is not in thread / Benutzer ist nicht im Raid')
         else:
             message = db.get_message(group_id, guild_name)
             m_id = message['m_id']
             char = char_result['char_name']
             #get role of user
-            role_result = db.get_charRole(char, guild_name)
+            clean_char_name = char.split(' ')[0]
+            role_result = db.get_charRole(clean_char_name, guild_name)
             role = role_result['role']
 
             group_result = db.get_group(group_id, guild_name)
             mc = group_result['raid_mc']
 
-            ilvl = db.get_char_ilvl(char, guild_name)
+            ilvl = db.get_char_ilvl(clean_char_name, guild_name)
             char_ilvl = ilvl['ilvl']
 
             if role == 'DPS':
@@ -496,12 +518,20 @@ class KickDialogue(discord.ui.Select):
 
             db.close()
 
-        
-            await self.thread.remove_user(user)
-            await interaction.response.send_message(f'removed user: {user.name}', ephemeral=True)
-            channel = interaction.guild.get_channel(interaction.channel.id)
-            m = await channel.fetch_message(m_id)
-            await m.edit(view=self.view.orgview, embed=embed)
+            try:
+                await self.thread.remove_user(user)
+                await interaction.followup.send(f'removed user: {user.name}', ephemeral=True)
+                channel = {}
+                if interaction.guild.get_channel(interaction.channel.id) is None:
+                    channel = interaction.guild.fetch_channel(interaction.channel.id)
+                else:
+                    channel = interaction.guild.get_channel(interaction.channel.id)
+                m = await channel.fetch_message(m_id)
+                await m.edit(view=self.view.orgview, embed=embed)
+            except discord.errors as e:
+                logger.warning(f'DC Error in kick callback - {e}')
+                await interaction.followup.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True)
+
     
 
 
@@ -580,15 +610,23 @@ class CharSelect(discord.ui.Select):
 
             #self.view.orgview.user_chars.clear() #clear list
             self.db.close()
-            await self.view.thread.add_user(interaction.user)
+            try:
+                await self.view.thread.add_user(interaction.user)
 
-            await interaction.response.edit_message(view=self.view)
-            #await interaction.followup.edit_message
-            channel = interaction.guild.get_channel(interaction.channel.id)
-            m = await channel.fetch_message(m_id)
-            await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-            await interaction.delete_original_response()
+                await interaction.response.edit_message(view=self.view)
+                #await interaction.followup.edit_message
+                channel = {}
+                if interaction.guild.get_channel(interaction.channel.id) is None:
+                    channel = await interaction.guild.fetch_channel(interaction.channel.id)
+                else:
+                    channel = interaction.guild.get_channel(interaction.channel.id)
 
+                m = await channel.fetch_message(m_id)
+                await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
+                await interaction.delete_original_response()
+            except discord.errors as e:
+                logger.warning(f'DC Error in charSelect callback - {e}')
+                await interaction.response.send_message('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
         else:
             name = check['char_name']
             self.db.close()
@@ -610,7 +648,11 @@ class RaidType(discord.ui.Select):
         self.placeholder = self.values[0]
         self.parentview.add_item(RaidSelect(parentview=self.parentview, raid_type=r_type))
         self.disabled = True
-        await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+        try:
+            await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+        except discord.errors as e:
+            logger.warning(f'DC Error in raidType callback - {e}')
+            await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True) 
 
 
 class RaidSelect(discord.ui.Select):
@@ -634,7 +676,11 @@ class RaidSelect(discord.ui.Select):
         self.parentview.selectedRaid = self.parentview.raids[self.values[0]]
         self.disabled = True
         self.parentview.add_item(RaidModeSelect(parentview=self.parentview, mode=self.parentview.raids[self.values[0]]))
-        await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+        try:
+            await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+        except discord.errors as e:
+            logger.warning(f'DC Error in raidSelect callback - {e}')
+            await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True)
 
 class RaidModeSelect(discord.ui.Select):
     def __init__(self, parentview, mode) -> None:
@@ -655,7 +701,10 @@ class RaidModeSelect(discord.ui.Select):
         createButton  = self.parentview.get_item('create')
         createButton.disabled = False
         self.disabled = True
-        await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+        try:
+            await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
+        except discord.errors as e:
+            await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True)
 
 
 
