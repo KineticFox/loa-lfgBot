@@ -26,6 +26,58 @@ logger.propagate = False
 #----------------------------------------------------------------------------------------------------------------------------#
 raids = {}
 
+async def join_block(db,interaction, lock, view):
+    async with lock:
+        m_id = interaction.message.id
+        c_id = interaction.channel.id
+        user = interaction.user.name
+        embed = interaction.message.embeds[0]
+        member = interaction.guild.get_member_named(user)
+        u_id = member.id  
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+        await interaction.response.defer()
+        result = db.select_chars(u_id, guild_name)
+        edict = embed.to_dict()
+        fields = edict.get('fields')
+        group_id = fields[8].get('value') #groupd tabel id
+        thread_id = None
+        thread = None
+        raid = fields[1].get('value')
+        raidname = raid.split(' -')[0]
+
+        res = db.get_raid_mc(raidname)
+        mc = res['member']
+
+        g_res= db.get_group(group_id, guild_name)
+        g_mc = g_res['raid_mc']
+        
+        #check if user is already connected to this raid id --> raidmember table
+        join_check = db.raidmember_check(group_id, u_id, guild_name)
+        
+
+        if result is None:
+            db.close()
+            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
+        elif len(result) == 0:
+            db.close()
+            await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
+        elif join_check is not None:
+            db.close()
+            char = join_check['char_name']
+            await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
+        elif g_mc >= mc:
+            db.close()
+            await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
+        else:
+            panel = discord.Embed(
+                title='Please choose your Character / Bitte wähle deinen Charakter',
+                color=discord.Colour.blue(),
+            )
+
+            chanell = await interaction.guild.fetch_channel(c_id)
+            thread = chanell.get_thread(m_id)
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(view, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
+
 class LegionRaidCreation(discord.ui.View):
 
     def __init__(self,db, raids, embed):
@@ -166,8 +218,10 @@ class JoinRaid(discord.ui.View):
         member = interaction.guild.get_member_named(user)
         u_id = member.id  
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
-        self.embed = interaction.message.embeds[0]             
+        self.embed = interaction.message.embeds[0]
+
         await interaction.response.defer()
+
         result = db.select_chars(u_id, guild_name)
         edict = self.embed.to_dict()
         fields = edict.get('fields')
@@ -183,10 +237,10 @@ class JoinRaid(discord.ui.View):
         g_res= db.get_group(group_id, guild_name)
         g_mc = g_res['raid_mc']
 
-
         
         #check if user is already connected to this raid id --> raidmember table
         join_check = db.raidmember_check(group_id, u_id, guild_name)
+        
 
         if result is None:
             db.close()
@@ -543,7 +597,8 @@ class CharSelect(discord.ui.Select):
         def set_options():
             list=[]
             for char in optionlist:
-                list.append(discord.SelectOption(label=char))
+                charname = char.split(' ')[0]
+                list.append(discord.SelectOption(label=charname))
             return list
     
         super().__init__(custom_id='character_selection', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
@@ -552,13 +607,16 @@ class CharSelect(discord.ui.Select):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
 
-        charname = selectedChar.split(' ')[0]
-        capital_charname = charname.capitalize()
+        charname = ""
+        #capital_charname = charname.capitalize()
 
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
+        for char in self.olist:
+            if char.split(' ')[0] == selectedChar:
+                charname = char
         #get selected char from db for role
-        role = self.db.get_charRole(capital_charname, guild_name)
+        role = self.db.get_charRole(selectedChar, guild_name)
         #get raid id, user id
 
         #check if user is already connected to this raid id --> raidmember table
@@ -568,7 +626,7 @@ class CharSelect(discord.ui.Select):
         self.disabled = True
 
         if(check is None):
-            self.db.add_groupmember(self.view.g_id, self.view.user_id, selectedChar, guild_name)
+            self.db.add_groupmember(self.view.g_id, self.view.user_id, char, guild_name)
 
             #get mc from raid
             res = self.db.get_group(self.view.g_id, guild_name)
@@ -579,7 +637,7 @@ class CharSelect(discord.ui.Select):
             m_id = message['m_id']
 
             #get char ilvl
-            ilvl = self.db.get_char_ilvl(capital_charname, guild_name)
+            ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
             char_ilvl = ilvl['ilvl']
 
 
@@ -595,7 +653,7 @@ class CharSelect(discord.ui.Select):
                 self.db.update_group_mc(self.view.g_id, mc, guild_name)
                 self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                 dps_string = e_fields[6].get('value')
-                new_dps_string = dps_string + f'\n{selectedChar} ({char_ilvl}) - {interaction.user.name}\n'
+                new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
 
             else:
@@ -605,7 +663,7 @@ class CharSelect(discord.ui.Select):
                 self.db.update_group_mc(self.view.g_id, mc, guild_name)
                 self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                 supp_string = e_fields[7].get('value')
-                new_supp_string = supp_string + f'\n{selectedChar} ({char_ilvl}) - {interaction.user.name}\n'
+                new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
             #self.view.orgview.user_chars.clear() #clear list

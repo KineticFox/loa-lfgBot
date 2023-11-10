@@ -256,9 +256,9 @@ class LBDB:
                     self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
                     return 'Updated char'
             elif delete == 'yes':
-                self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?' [charname])
+                self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?', [charname])
                 res = self.cur.fetchall()
-                if len(res) == 0:
+                if len(res) == 0 or res is None:
                     self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
                     return 'deleted char'
                 else:
