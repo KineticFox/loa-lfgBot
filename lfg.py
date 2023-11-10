@@ -543,7 +543,8 @@ class CharSelect(discord.ui.Select):
         def set_options():
             list=[]
             for char in optionlist:
-                list.append(discord.SelectOption(label=char))
+                charname = char.split(' ')[0]
+                list.append(discord.SelectOption(label=charname))
             return list
     
         super().__init__(custom_id='character_selection', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
@@ -552,13 +553,16 @@ class CharSelect(discord.ui.Select):
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
 
-        charname = selectedChar.split(' ')[0]
-        capital_charname = charname.capitalize()
+        charname = ""
+        #capital_charname = charname.capitalize()
 
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
+        for char in self.olist:
+            if char.split(' ')[0] == selectedChar:
+                charname = char
         #get selected char from db for role
-        role = self.db.get_charRole(capital_charname, guild_name)
+        role = self.db.get_charRole(selectedChar, guild_name)
         #get raid id, user id
 
         #check if user is already connected to this raid id --> raidmember table
@@ -568,7 +572,7 @@ class CharSelect(discord.ui.Select):
         self.disabled = True
 
         if(check is None):
-            self.db.add_groupmember(self.view.g_id, self.view.user_id, selectedChar, guild_name)
+            self.db.add_groupmember(self.view.g_id, self.view.user_id, char, guild_name)
 
             #get mc from raid
             res = self.db.get_group(self.view.g_id, guild_name)
@@ -579,7 +583,7 @@ class CharSelect(discord.ui.Select):
             m_id = message['m_id']
 
             #get char ilvl
-            ilvl = self.db.get_char_ilvl(capital_charname, guild_name)
+            ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
             char_ilvl = ilvl['ilvl']
 
 
@@ -595,7 +599,7 @@ class CharSelect(discord.ui.Select):
                 self.db.update_group_mc(self.view.g_id, mc, guild_name)
                 self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                 dps_string = e_fields[6].get('value')
-                new_dps_string = dps_string + f'\n{selectedChar} ({char_ilvl}) - {interaction.user.name}\n'
+                new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
 
             else:
@@ -605,7 +609,7 @@ class CharSelect(discord.ui.Select):
                 self.db.update_group_mc(self.view.g_id, mc, guild_name)
                 self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                 supp_string = e_fields[7].get('value')
-                new_supp_string = supp_string + f'\n{selectedChar} ({char_ilvl}) - {interaction.user.name}\n'
+                new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
             #self.view.orgview.user_chars.clear() #clear list
