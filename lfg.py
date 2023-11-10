@@ -26,57 +26,6 @@ logger.propagate = False
 #----------------------------------------------------------------------------------------------------------------------------#
 raids = {}
 
-async def join_block(db,interaction, lock, view):
-    async with lock:
-        m_id = interaction.message.id
-        c_id = interaction.channel.id
-        user = interaction.user.name
-        embed = interaction.message.embeds[0]
-        member = interaction.guild.get_member_named(user)
-        u_id = member.id  
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
-        await interaction.response.defer()
-        result = db.select_chars(u_id, guild_name)
-        edict = embed.to_dict()
-        fields = edict.get('fields')
-        group_id = fields[8].get('value') #groupd tabel id
-        thread_id = None
-        thread = None
-        raid = fields[1].get('value')
-        raidname = raid.split(' -')[0]
-
-        res = db.get_raid_mc(raidname)
-        mc = res['member']
-
-        g_res= db.get_group(group_id, guild_name)
-        g_mc = g_res['raid_mc']
-        
-        #check if user is already connected to this raid id --> raidmember table
-        join_check = db.raidmember_check(group_id, u_id, guild_name)
-        
-
-        if result is None:
-            db.close()
-            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
-        elif len(result) == 0:
-            db.close()
-            await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
-        elif join_check is not None:
-            db.close()
-            char = join_check['char_name']
-            await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
-        elif g_mc >= mc:
-            db.close()
-            await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
-        else:
-            panel = discord.Embed(
-                title='Please choose your Character / Bitte wähle deinen Charakter',
-                color=discord.Colour.blue(),
-            )
-
-            chanell = await interaction.guild.fetch_channel(c_id)
-            thread = chanell.get_thread(m_id)
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(view, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
 
 class LegionRaidCreation(discord.ui.View):
 
@@ -202,6 +151,7 @@ class JoinRaid(discord.ui.View):
         self.embed = None
         self.group_id = None
         #self.message = message
+        self.active=True
 
     @discord.ui.button(
         label='Join raid',
@@ -212,6 +162,8 @@ class JoinRaid(discord.ui.View):
     async def join_callback(self, button, interaction):
         db = LBDB()
         db.use_db()
+
+        
         m_id = interaction.message.id
         c_id = interaction.channel.id
         user = interaction.user.name
@@ -220,50 +172,55 @@ class JoinRaid(discord.ui.View):
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
         self.embed = interaction.message.embeds[0]
 
-        await interaction.response.defer()
+        if self.active == True:
+            self.active = False
+            await interaction.response.defer()
 
-        result = db.select_chars(u_id, guild_name)
-        edict = self.embed.to_dict()
-        fields = edict.get('fields')
-        group_id = fields[8].get('value') #groupd tabel id
-        thread_id = None
-        thread = None
-        raid = fields[1].get('value')
-        raidname = raid.split(' -')[0]
+            result = db.select_chars(u_id, guild_name)
+            edict = self.embed.to_dict()
+            fields = edict.get('fields')
+            group_id = fields[8].get('value') #groupd tabel id
+            thread_id = None
+            thread = None
+            raid = fields[1].get('value')
+            raidname = raid.split(' -')[0]
 
-        res = db.get_raid_mc(raidname)
-        mc = res['member']
+            res = db.get_raid_mc(raidname)
+            mc = res['member']
 
-        g_res= db.get_group(group_id, guild_name)
-        g_mc = g_res['raid_mc']
+            g_res= db.get_group(group_id, guild_name)
+            g_mc = g_res['raid_mc']
 
-        
-        #check if user is already connected to this raid id --> raidmember table
-        join_check = db.raidmember_check(group_id, u_id, guild_name)
-        
+            
+            #check if user is already connected to this raid id --> raidmember table
+            join_check = db.raidmember_check(group_id, u_id, guild_name)
+            
 
-        if result is None:
-            db.close()
-            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
-        elif len(result) == 0:
-            db.close()
-            await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
-        elif join_check is not None:
-            db.close()
-            char = join_check['char_name']
-            await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
-        elif g_mc >= mc:
-            db.close()
-            await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
+            if result is None:
+                db.close()
+                await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
+            elif len(result) == 0:
+                db.close()
+                await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
+            elif join_check is not None:
+                db.close()
+                char = join_check['char_name']
+                await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
+            elif g_mc >= mc:
+                db.close()
+                await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
+            else:
+                panel = discord.Embed(
+                    title='Please choose your Character / Bitte wähle deinen Charakter',
+                    color=discord.Colour.blue(),
+                )
+
+                chanell = await interaction.guild.fetch_channel(c_id)
+                thread = chanell.get_thread(m_id)
+                await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
+                
         else:
-            panel = discord.Embed(
-                title='Please choose your Character / Bitte wähle deinen Charakter',
-                color=discord.Colour.blue(),
-            )
-
-            chanell = await interaction.guild.fetch_channel(c_id)
-            thread = chanell.get_thread(m_id)
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
+            await interaction.response.send_message('Waiting for another user to finish / Es wird auf einen anderen Spieler gewartet bis dieser fertig ist.', ephemeral=True)
 
 
 
@@ -477,11 +434,15 @@ class JoinDialogue(discord.ui.View):
 
         setup_chars()
         super().__init__(
-            timeout=40, 
+            timeout=20, 
             disable_on_timeout=True
             )
         
-        self.add_item(CharSelect(self.user_chars, self.db))
+        self.add_item(CharSelect(self.user_chars, self.db, self.orgview))
+
+    async def on_timeout(self):
+        self.orgview.active = True
+        self.clear_items()
 
 class KickView(discord.ui.View):
     def __init__(self, memberlist, thread, orgview):
@@ -591,9 +552,10 @@ class KickDialogue(discord.ui.Select):
 
 
 class CharSelect(discord.ui.Select):
-    def __init__(self, optionlist, db) -> None:
+    def __init__(self, optionlist, db, parent) -> None:
         self.olist = optionlist
         self.db = db
+        self.parentview = parent
         def set_options():
             list=[]
             for char in optionlist:
@@ -655,7 +617,7 @@ class CharSelect(discord.ui.Select):
                 dps_string = e_fields[6].get('value')
                 new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
                 self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
-
+                
             else:
                 mc += 1
                 supp_count = e_fields[4].get('value')
@@ -682,13 +644,16 @@ class CharSelect(discord.ui.Select):
                 m = await channel.fetch_message(m_id)
                 await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
                 await interaction.delete_original_response()
+                self.parentview.active = True
             except discord.errors as e:
                 logger.warning(f'DC Error in charSelect callback - {e}')
                 await interaction.response.send_message('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
+                self.parentview.active = True
         else:
             name = check['char_name']
             self.db.close()
             await interaction.response.send_message(f'you are already in this group with {name} / Du bist schon mit {name} angemeldet', ephemeral=True)
+            self.parentview.active = True
 
 class RaidType(discord.ui.Select):
     def __init__(self, parentview) -> None:
