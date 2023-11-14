@@ -73,6 +73,8 @@ class LegionRaidCreation(discord.ui.View):
         embed = interaction.message.embeds[0]
         chanell = {}
 
+        await interaction.response.defer(ephemeral=True)
+
         if interaction.guild.get_channel(interaction.channel.id) is None:
             chanell = await interaction.guild.fetch_channel(interaction.channel.id)
         else:
@@ -114,25 +116,30 @@ class LegionRaidCreation(discord.ui.View):
             thread = await m.create_thread(name=f"{embed.title}")
             thread_id = thread.id        
             r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
+
         except discord.errors as e:
             logger.warning(f'DC Error in creatRaid callback - {e}')
-
+            await interaction.delete_original_response()
+        
 
         if r_id is None or len(r_id) == 0:
             self.db.close()
             logger.warning(f'Raid creation failed for {interaction.user.name}')
-            await interaction.response.send_message('Something went wrong!',  ephemeral=True)
+            await interaction.followup.send('Something went wrong!')
             await m.delete()
             await thread.delete()   
         else:             
             raid_id = r_id['LAST_INSERT_ID()']
             self.db.add_message(m.id, raid_id, guild_name)
             embed.add_field(name='ID', value=raid_id)
-            await interaction.response.defer()
+            #await interaction.response.defer()
             await interaction.delete_original_response()
             await m.edit(embed=embed ,view=JoinRaid())
             self.db.close()
             logger.debug(f'stored raid group with ID {raid_id}')
+    
+
+
             
 
 
@@ -159,68 +166,69 @@ class JoinRaid(discord.ui.View):
         custom_id= 'join_button'
     )
 
-    async def join_callback(self, button, interaction):
-        db = LBDB()
-        db.use_db()
-
+    async def join_callback(self, button, interaction):         
         
+        self.active = False
+        await interaction.response.defer()
+
         m_id = interaction.message.id
         c_id = interaction.channel.id
         user = interaction.user.name
         member = interaction.guild.get_member_named(user)
         u_id = member.id  
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+    
         self.embed = interaction.message.embeds[0]
 
-        if self.active == True:
-            self.active = False
-            await interaction.response.defer()
+        button.disabled=True
 
-            result = db.select_chars(u_id, guild_name)
-            edict = self.embed.to_dict()
-            fields = edict.get('fields')
-            group_id = fields[8].get('value') #groupd tabel id
-            thread_id = None
-            thread = None
-            raid = fields[1].get('value')
-            raidname = raid.split(' -')[0]
+        db = LBDB()
+        db.use_db()
 
-            res = db.get_raid_mc(raidname)
-            mc = res['member']
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-            g_res= db.get_group(group_id, guild_name)
-            g_mc = g_res['raid_mc']
+        result = db.select_chars(u_id, guild_name)
+        edict = self.embed.to_dict()
+        fields = edict.get('fields')
+        group_id = fields[8].get('value') #groupd tabel id
+        thread_id = None
+        thread = None
+        raid = fields[1].get('value')
+        raidname = raid.split(' -')[0]
 
-            
-            #check if user is already connected to this raid id --> raidmember table
-            join_check = db.raidmember_check(group_id, u_id, guild_name)
-            
+        res = db.get_raid_mc(raidname)
+        mc = res['member']
 
-            if result is None:
-                db.close()
-                await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
-            elif len(result) == 0:
-                db.close()
-                await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
-            elif join_check is not None:
-                db.close()
-                char = join_check['char_name']
-                await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
-            elif g_mc >= mc:
-                db.close()
-                await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
-            else:
-                panel = discord.Embed(
-                    title='Please choose your Character / Bitte wähle deinen Charakter',
-                    color=discord.Colour.blue(),
-                )
+        g_res= db.get_group(group_id, guild_name)
+        g_mc = g_res['raid_mc']
 
-                chanell = await interaction.guild.fetch_channel(c_id)
-                thread = chanell.get_thread(m_id)
-                await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name), embed=panel)
-                
+        
+        #check if user is already connected to this raid id --> raidmember table
+        join_check = db.raidmember_check(group_id, u_id, guild_name)
+        
+
+        if result is None:
+            db.close()
+            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
+        elif len(result) == 0:
+            db.close()
+            await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
+        elif join_check is not None:
+            db.close()
+            char = join_check['char_name']
+            await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
+        elif g_mc >= mc:
+            db.close()
+            await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
         else:
-            await interaction.response.send_message('Waiting for another user to finish / Es wird auf einen anderen Spieler gewartet bis dieser fertig ist.', ephemeral=True)
+            panel = discord.Embed(
+                title='Please choose your Character / Bitte wähle deinen Charakter',
+                color=discord.Colour.blue(),
+            )
+            await interaction.message.edit(view=self)# new to disable button
+            chanell = await interaction.guild.fetch_channel(c_id)
+            thread = chanell.get_thread(m_id)
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell), embed=panel)
+                
 
 
 
@@ -238,8 +246,10 @@ class JoinRaid(discord.ui.View):
         author = embed.author.name
         embed_dict = embed.to_dict()
 
+        await interaction.response.defer(ephemeral=True)
+
         if interaction.user.name != author:
-            await interaction.response.send_message('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
+            await interaction.followup.send('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
         else:
             fields = embed_dict.get('fields')
 
@@ -261,9 +271,9 @@ class JoinRaid(discord.ui.View):
                 else:
                     user_list.append(member)
             if len(user_list) == 0:
-                await interaction.response.send_message('No users to kick in this thread / Es sind keine User in der Gruppe', ephemeral=True)
+                await interaction.followup.send('No users to kick in this thread / Es sind keine User in der Gruppe', ephemeral=True)
             else:
-                await interaction.response.send_message(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
+                await interaction.followup.send(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
   
     @discord.ui.button(
         label='Leave',
@@ -273,6 +283,7 @@ class JoinRaid(discord.ui.View):
 
 
     async def leave_callback(self, button, interaction):
+        await interaction.response.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
         thread_id = None
@@ -307,10 +318,10 @@ class JoinRaid(discord.ui.View):
 
         if mc <= 1:
             db.close()
-            await interaction.response.send_message('You can not leave please delete group / Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
+            await interaction.followup.send('You can not leave please delete group / Du kannst die gruppe nicht verlassen bitte lösche die Gruppe', ephemeral=True)
         elif char_result is None:
             db.close()
-            await interaction.response.send_message('You can not leave, you are not member of the party / Du bist kein Mitglied der Gruppe', ephemeral=True)
+            await interaction.followup.send('You can not leave, you are not member of the party / Du bist kein Mitglied der Gruppe', ephemeral=True)
         else:
             char = char_result['char_name']
             #get role of user
@@ -360,19 +371,20 @@ class JoinRaid(discord.ui.View):
                 embed.set_author(name=db_user_name)
                 db.close()
                 try:
-                    await interaction.response.edit_message(embed=embed, view=self)
+                    await interaction.message.edit(embed=embed, view=self)
                     await thread.remove_user(interaction.user)
                 except discord.errors as e:
                     logger.warning(f'DC Error in leave callback- {e}')
-                    await interaction.response.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True)
+                    await interaction.followup.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True)
             else:
                 db.close()
                 try:
-                    await interaction.response.edit_message(embed=embed, view=self)
+                    #await interaction.response.edit_message(embed=embed, view=self)
+                    await interaction.message.edit(embed=embed, view=self)
                     await thread.remove_user(interaction.user)
                 except discord.errors as e:
                     logger.warning(f'DC Error in leave callback - {e}')
-                    await interaction.response.send_message('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
+                    await interaction.followup.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
                     
     @discord.ui.button(
         label='Delete',
@@ -381,6 +393,7 @@ class JoinRaid(discord.ui.View):
     )
 
     async def delete_callback(self, button, interaction):
+        await interaction.response.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
         embed = interaction.message.embeds[0]
@@ -406,24 +419,26 @@ class JoinRaid(discord.ui.View):
             db.delete_raids(fields[8].get('value'), guild_name)
             db.close()
             await thread.delete()
-            await interaction.response.defer()
+            
             await interaction.message.delete()
         else:
             db.close()
-            await interaction.response.send_message('you can not delete the party because you are not the owner / Du kannst die Gruppe nicht löschen, da du nicht der Leiter bist.', ephemeral=True)
+            await interaction.followup.send('you can not delete the party because you are not the owner / Du kannst die Gruppe nicht löschen, da du nicht der Leiter bist.', ephemeral=True)
 
 #--------------------- Subclassed view elements -----------------------------------#
 
 class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview, db,group_id, thread, message, user_id, guild_name):
+    def __init__(self, orgview, db,group_id, thread, message, user_id, guild_name, channel, timeout=20):
         self.orgview = orgview
         self.db = db
         self.user_chars = []
         self.g_id = group_id
         self.thread = thread
         self.message = message
+        self.m = message
         self.user_id = user_id
         self.guild_name = guild_name
+        self.channel = channel
         #self.orgview.children[0].disabled=True
         def setup_chars():
             result = self.db.select_chars(self.user_id, self.guild_name)  
@@ -434,15 +449,18 @@ class JoinDialogue(discord.ui.View):
 
         setup_chars()
         super().__init__(
-            timeout=20, 
-            disable_on_timeout=True
+            timeout=timeout, 
+            #disable_on_timeout=True
             )
         
         self.add_item(CharSelect(self.user_chars, self.db, self.orgview))
 
     async def on_timeout(self):
-        self.orgview.active = True
+        m = await self.channel.fetch_message(self.m)
+        self.orgview.children[0].disabled = False
+        await m.edit(view=self.orgview, embed=self.orgview.embed)
         self.clear_items()
+        self.stop()
 
 class KickView(discord.ui.View):
     def __init__(self, memberlist, thread, orgview):
@@ -465,12 +483,13 @@ class KickDialogue(discord.ui.Select):
         super().__init__(custom_id='memberlist', placeholder='Choose member', min_values=1, max_values=1, options=set_options(), disabled=False)
     
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
         embed = interaction.message.embeds[0]
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        await interaction.response.defer(ephemeral=True)
+        
         embed_dict = embed.to_dict()
         fields = embed_dict.get('fields')
         group_id = fields[8].get('value')
@@ -566,6 +585,7 @@ class CharSelect(discord.ui.Select):
         super().__init__(custom_id='character_selection', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
 
@@ -586,17 +606,27 @@ class CharSelect(discord.ui.Select):
 
         #disable select menu to prevent unintended char switching
         self.disabled = True
+        channel = {}
+        if interaction.guild.get_channel(interaction.channel.id) is None:
+            channel = await interaction.guild.fetch_channel(interaction.channel.id)
+        else:
+            channel = interaction.guild.get_channel(interaction.channel.id)
+        
+        #get message id
+        message = self.db.get_message(self.view.g_id, guild_name)
+        m_id = message['m_id']
+        
+        m = await channel.fetch_message(m_id)
 
         if(check is None):
-            self.db.add_groupmember(self.view.g_id, self.view.user_id, char, guild_name)
+            self.db.add_groupmember(self.view.g_id, self.view.user_id, charname, guild_name)
 
             #get mc from raid
             res = self.db.get_group(self.view.g_id, guild_name)
             mc = res['raid_mc']
 
             #get message id
-            message = self.db.get_message(self.view.g_id, guild_name)
-            m_id = message['m_id']
+            
 
             #get char ilvl
             ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
@@ -633,27 +663,39 @@ class CharSelect(discord.ui.Select):
             try:
                 await self.view.thread.add_user(interaction.user)
 
-                await interaction.response.edit_message(view=self.view)
+                #await interaction.response.edit_message(view=self.view)
+                #await interaction.message.edit(view=self.view)
+                
+                #await m.edit(view=self.view)
                 #await interaction.followup.edit_message
-                channel = {}
-                if interaction.guild.get_channel(interaction.channel.id) is None:
-                    channel = await interaction.guild.fetch_channel(interaction.channel.id)
-                else:
-                    channel = interaction.guild.get_channel(interaction.channel.id)
+                
 
-                m = await channel.fetch_message(m_id)
+                
+                self.parentview.children[0].disabled = False
                 await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
                 await interaction.delete_original_response()
+                self.disabled = True
+                #m2 = await interaction.original_response()
+                #await m2.edit(view=self.view)
+                #await interaction.followup.send('Add you to the group / Du wurdest der Gruppe hinzugefügt', ephemeral=True)
                 self.parentview.active = True
+                self.view.stop()
             except discord.errors as e:
+                #m = await interaction.original_response()
                 logger.warning(f'DC Error in charSelect callback - {e}')
-                await interaction.response.send_message('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
-                self.parentview.active = True
+                await interaction.followup.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
+                self.parentview.children[0].disabled = False
+                await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
+                self.view.stop()
         else:
             name = check['char_name']
             self.db.close()
-            await interaction.response.send_message(f'you are already in this group with {name} / Du bist schon mit {name} angemeldet', ephemeral=True)
-            self.parentview.active = True
+            self.parentview.children[0].disabled = False
+            #m = await interaction.original_response()
+            await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
+            await interaction.followup.send(f'you are already in this group with {name} / Du bist schon mit {name} angemeldet', ephemeral=True)
+            self.view.stop()
+            
 
 class RaidType(discord.ui.Select):
     def __init__(self, parentview) -> None:
