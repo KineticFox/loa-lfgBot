@@ -213,9 +213,17 @@ class JoinRaid(discord.ui.View):
             db.close()
             await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
         elif join_check is not None:
-            db.close()
             char = join_check['char_name']
-            await interaction.followup.send(f'You are already in this raid with {char} / Du bist schon in dieser Gruppe mit {char} eingetragen', ephemeral=True)
+            panel = discord.Embed(
+                title='Edit your char / Bearbeite deinen Charakter',
+                color=discord.Colour.blue(),
+            )
+            panel.add_field(name=chr(173), value=f'Wähle {char} erneut um sein ilvl zu erneurern oder wähle einen anderen char.')
+            await interaction.message.edit(view=self)# new to disable button
+            chanell = await interaction.guild.fetch_channel(c_id)
+            thread = chanell.get_thread(m_id)
+            update = True
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=char), embed=panel)
         elif g_mc >= mc:
             db.close()
             await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
@@ -224,10 +232,11 @@ class JoinRaid(discord.ui.View):
                 title='Please choose your Character / Bitte wähle deinen Charakter',
                 color=discord.Colour.blue(),
             )
+            update = False
             await interaction.message.edit(view=self)# new to disable button
             chanell = await interaction.guild.fetch_channel(c_id)
             thread = chanell.get_thread(m_id)
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell), embed=panel)
+            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=None), embed=panel)
                 
 
 
@@ -428,7 +437,7 @@ class JoinRaid(discord.ui.View):
 #--------------------- Subclassed view elements -----------------------------------#
 
 class JoinDialogue(discord.ui.View):
-    def __init__(self, orgview, db,group_id, thread, message, user_id, guild_name, channel, timeout=20):
+    def __init__(self, orgview, db,group_id, thread, message, user_id, guild_name, channel, old_char, timeout=20):
         self.orgview = orgview
         self.db = db
         self.user_chars = []
@@ -439,10 +448,11 @@ class JoinDialogue(discord.ui.View):
         self.user_id = user_id
         self.guild_name = guild_name
         self.channel = channel
+        self.old_char = old_char
         #self.orgview.children[0].disabled=True
         def setup_chars():
             result = self.db.select_chars(self.user_id, self.guild_name)  
-            #temp_char_list = [{k: item[k] for k in item.keys()} for item in result]
+
             for d in result:
                 self.user_chars.append(f'{d.get("char_name")} {d.get("emoji")}')
 
@@ -618,23 +628,24 @@ class CharSelect(discord.ui.Select):
         
         m = await channel.fetch_message(m_id)
 
+         #get mc from raid
+        res = self.db.get_group(self.view.g_id, guild_name)
+        mc = res['raid_mc']
+
+        #get message id
+        
+
+        #get char ilvl
+        ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
+        char_ilvl = ilvl['ilvl']
+
+
+        e_dict = self.view.orgview.embed.to_dict()
+        e_fields = e_dict.get('fields')
+
         if(check is None):
-            self.db.add_groupmember(self.view.g_id, self.view.user_id, charname, guild_name)
-
-            #get mc from raid
-            res = self.db.get_group(self.view.g_id, guild_name)
-            mc = res['raid_mc']
-
-            #get message id
-            
-
-            #get char ilvl
-            ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
-            char_ilvl = ilvl['ilvl']
-
-
-            e_dict = self.view.orgview.embed.to_dict()
-            e_fields = e_dict.get('fields')
+            self.db.add_groupmember(self.view.g_id, self.view.user_id, charname, guild_name)    
+              
 
             if(role['role'] == 'DPS'):
                 #update mc update_group_mc
@@ -661,15 +672,7 @@ class CharSelect(discord.ui.Select):
             #self.view.orgview.user_chars.clear() #clear list
             self.db.close()
             try:
-                await self.view.thread.add_user(interaction.user)
-
-                #await interaction.response.edit_message(view=self.view)
-                #await interaction.message.edit(view=self.view)
-                
-                #await m.edit(view=self.view)
-                #await interaction.followup.edit_message
-                
-
+                await self.view.thread.add_user(interaction.user)            
                 
                 self.parentview.children[0].disabled = False
                 await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
@@ -688,12 +691,98 @@ class CharSelect(discord.ui.Select):
                 await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
                 self.view.stop()
         else:
-            name = check['char_name']
-            self.db.close()
+           
+            old_char = self.view.old_char.split(' ')[0]
+            old_role = self.db.get_charRole(old_char, guild_name)
+
+            new_embed = {}
+
+            if old_role['role'] == 'DPS':
+                mc -= 1
+                dps_count = e_fields[3].get('value')
+                d_count = int(dps_count) - 1
+                self.db.update_group_mc(self.view.g_id, mc, guild_name)
+                dps_string = e_fields[6].get('value')
+                re_pattern = re.compile(re.escape(old_char) + '.*?(\n|$)', re.DOTALL)
+                new_dps_string = re.sub(re_pattern, '', dps_string, 1)
+                self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
+                self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                self.db.remove_groupmember(self.view.user_id, self.view.g_id, guild_name)
+                message = await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
+                #print('edit old dps mess') --> maybe replace with log.debug
+                new_embed = message.embeds[0]
+                new_e_dict = new_embed.to_dict()
+                new_fields = new_e_dict.get('fields')
+
+                if(role['role'] == 'DPS'):                    
+                    mc += 1
+                    dps_count = new_fields[3].get('value')
+                    d_count = int(dps_count) + 1
+                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
+                    new_embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                    dps_string = new_fields[6].get('value')
+                    new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
+                    new_embed.set_field_at(6, name='DPS', value=new_dps_string)
+                    
+                else:
+                    #print('switched from dps to supp') --> maybe replace with log.debug
+                    mc += 1
+                    supp_count = new_fields[4].get('value')
+                    s_count = int(supp_count) + 1
+                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
+                    new_embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+                    supp_string = new_fields[7].get('value')
+                    new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
+                    new_embed.set_field_at(7, name='SUPP', value=new_supp_string)
+
+            else:
+                mc -= 1
+                supp_count = e_fields[4].get('value')
+                s_count = int(supp_count) - 1
+                self.db.update_group_mc(self.view.g_id, mc, guild_name)
+                supp_string = e_fields[7].get('value')
+                re_pattern = re.compile(re.escape(old_char) + '.*?(\n|$)', re.DOTALL)
+                new_supp_string = re.sub(re_pattern, '', supp_string, 1)
+
+                self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
+                self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+                self.db.remove_groupmember(self.view.user_id, self.view.g_id, guild_name)
+                message = await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
+                #print('edit old supp mess') --> maybe replace with log.debug
+                new_embed = message.embeds[0]
+                new_e_dict = new_embed.to_dict()
+                new_fields = new_e_dict.get('fields')
+
+                
+                if(role['role'] == 'DPS'):
+                    #print('switched to new dps') --> maybe replace with log.debug
+                    mc += 1
+                    dps_count = new_fields[3].get('value')
+                    d_count = int(dps_count) + 1
+                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
+                    new_embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                    dps_string = new_fields[6].get('value')
+                    new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
+                    new_embed.set_field_at(6, name='DPS', value=new_dps_string)
+                    
+                else:
+                    mc += 1
+                    supp_count = new_fields[4].get('value')
+                    s_count = int(supp_count) + 1
+                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
+                    new_embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+                    supp_string = new_fields[7].get('value')
+                    new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
+                    new_embed.set_field_at(7, name='SUPP', value=new_supp_string)              
+              
+            
+            self.db.add_groupmember(self.view.g_id, self.view.user_id, charname, guild_name)
+            
             self.parentview.children[0].disabled = False
-            #m = await interaction.original_response()
-            await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-            await interaction.followup.send(f'you are already in this group with {name} / Du bist schon mit {name} angemeldet', ephemeral=True)
+            await m.edit(view=self.view.orgview, embed=new_embed)
+            await interaction.delete_original_response()
+            self.disabled = True
+            self.db.close()
             self.view.stop()
             
 
