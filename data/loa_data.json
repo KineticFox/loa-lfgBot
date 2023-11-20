@@ -9,11 +9,16 @@
         {"name": "Akkan", "modes":"1580 Normal, 1600 Hard", "member":8, "rtype":"Legion"},
         {"name": "Argos", "modes":"1370 Normal", "member":8, "rtype":"Abyssal"},
         {"name": "Kayangel", "modes":"1540 Normal, Hard 1580", "member":4, "rtype":"Abyssal"},
+        {"name": "Custom Group 8", "modes":"Custom", "member":8, "rtype":"Abyssal"},
+        {"name": "Custom Group 4", "modes":"Custom", "member":4, "rtype":"Abyssal"},
+        {"name": "Custom Group 8", "modes":"Custom", "member":8, "rtype":"Legion"},
+        {"name": "Custom Group 4", "modes":"Custom", "member":4, "rtype":"Legion"},
         {"name": "Deskaluda", "modes":"1415 Normal", "member":4, "rtype":"Guardian"},
         {"name": "Kungelanium", "modes":"1460 Normal", "member":4, "rtype":"Guardian"},
         {"name": "Caliligos", "modes":"1490 Normal", "member":4, "rtype":"Guardian"},
         {"name": "Hanumatan", "modes":"1540 Normal", "member":4, "rtype":"Guardian"},     
-        {"name": "Sonavel", "modes":"1580 Normal", "member":4, "rtype":"Guardian"}
+        {"name": "Sonavel", "modes":"1580 Normal", "member":4, "rtype":"Guardian"},
+        {"name":"Custom Group", "modes":"Custom", "member":4, "rtype":"Guardian"}
         
         
     ]

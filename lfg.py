@@ -91,8 +91,10 @@ class LegionRaidCreation(discord.ui.View):
 
         guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
+        custom = fname_lower.split(' ')[0]
+
         #upload image
-        if type == 'Guardian':
+        if type == 'Guardian' or custom == 'custom':
             result = self.db.get_image_url('default', 'TechKeller')
             url = result['url']
         else:
@@ -158,7 +160,6 @@ class JoinRaid(discord.ui.View):
         self.embed = None
         self.group_id = None
         #self.message = message
-        self.active=True
 
     @discord.ui.button(
         label='Join raid',
@@ -168,7 +169,6 @@ class JoinRaid(discord.ui.View):
 
     async def join_callback(self, button, interaction):         
         
-        self.active = False
         await interaction.response.defer()
 
         m_id = interaction.message.id
@@ -979,17 +979,6 @@ def run(bot):
         await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
 
     
-    @bot.slash_command(name="db_showtable", description="shows all rows of given table")
-    async def db_showtable(ctx, table: discord.Option(str, 'name of the table', required=True)):
-        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
-        db = LBDB()
-        db.use_db()
-        rows = db.show(table, tablename)
-        #dicts = [{k: item[k] for k in item.keys()} for item in rows]
-        #print(dicts)
-        db.close()
-        await ctx.respond(f'your table view {rows}', delete_after=30)
-    
     @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
         db = LBDB()
@@ -1087,36 +1076,44 @@ def run(bot):
 
     @bot.slash_command(name="update_raids", description="Updates Raids")
     async def db_updateraids(ctx):
+        await ctx.defer()
         db = LBDB()
         db.use_db()
         raid_file = open('data/loa_data.json')
         data = json.load(raid_file)
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
 
+        url = db.get_image_url('default', 'TechKeller')
+        if url is None:
+            file = discord.File(f'ressources/loa.png', filename=f'loa.png')
+            attachment = await ctx.followup.send('Uploaded image', file=file)
+            
+            url = attachment.attachments[0].url
+            db.save_image('default', url, 'TechKeller')
+
         for i in data['raids']:
             code = db.add_raids(i['name'], i['modes'], i['member'], i['rtype'], 'TechKeller')
             if code != 0:
                 if i['rtype'] == 'Legion' or i['rtype'] == 'Abyssal':
                     fname_lower = i['name'].lower()
+                    custom = fname_lower.split(' ')[0]
+                    if custom == 'custom':
+                        continue
                     file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
-                    attachment = await ctx.send('Uploaded image', file=file)
+                    attachment = await ctx.followup.send('Uploaded image', file=file)
                     #await asyncio.sleep(2)
                     url = attachment.attachments[0].url
                     db.save_image(fname_lower, url, 'TechKeller')
+                
+
 
         
-        url = db.get_image_url('default', 'TechKeller')
-        if url is None:
-            file = discord.File(f'ressources/loa.png', filename=f'loa.png')
-            attachment = await ctx.send('Uploaded image', file=file)
-            
-            url = attachment.attachments[0].url
-            db.save_image('default', url, 'TechKeller')
+        
 
 
         raid_file.close()
 
-        await ctx.send(f'added the new Raids', delete_after=20)      
+        await ctx.followup.send(f'added the new Raids', delete_after=20)      
         set_Raids(db, 'TechKeller')
         db.close()
     
@@ -1219,7 +1216,6 @@ def run(bot):
         raid = []
         title =[]
 
-        #chardicts = [{k: item[k] for k in item.keys()} for item in result]
         for g in group_list:
             chars.append(g.get('char_name'))
             raid.append(g.get('raid'))
@@ -1239,7 +1235,7 @@ def run(bot):
 
         await ctx.followup.send(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
 
-    @bot.slash_command(name='user_maintenance')
+    """  @bot.slash_command(name='user_maintenance')
     async def maintenance(ctx):
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
@@ -1252,13 +1248,6 @@ def run(bot):
         data = json.load(classes_file)
         
         classes_file.close()
-
-        #for name in all_names:
-        #    n = name['name']
-        #    member = ctx.guild.get_member_named(name['name'])
-        #    u_id = member.id
-        #    db.update_user(tablename, n, u_id)
-
         for char in all_chars:
             emoji = ''
             name = char['char_name']
@@ -1271,7 +1260,8 @@ def run(bot):
                     emoji = i
             db.update_emoji(tablename, name, emoji)
         
-        await ctx.followup.send('done', ephemeral=True)
+        await ctx.followup.send('done', ephemeral=True) 
+    """
     
     bot.run(token)
 
