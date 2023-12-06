@@ -9,6 +9,7 @@
         {"name": "Akkan", "modes":"1580 Normal, 1600 Hard", "member":8, "rtype":"Legion"},
         {"name": "Argos", "modes":"1370 Normal", "member":8, "rtype":"Abyssal"},
         {"name": "Kayangel", "modes":"1540 Normal, Hard 1580", "member":4, "rtype":"Abyssal"},
+        {"name": "Elfenbeinturm", "modes":"1600 Normal, Hard 1620", "member":4, "rtype":"Abyssal"},
         {"name": "Custom Group 8", "modes":"Custom", "member":8, "rtype":"Abyssal"},
         {"name": "Custom Group 4", "modes":"Custom", "member":4, "rtype":"Abyssal"},
         {"name": "Custom Group 8", "modes":"Custom", "member":8, "rtype":"Legion"},

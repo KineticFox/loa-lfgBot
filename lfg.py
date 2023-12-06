@@ -55,9 +55,9 @@ class LegionRaidCreation(discord.ui.View):
     )
     async def buttonCancel_callback(self, button, interaction):
         #await interaction.message.delete()
-        
-        self.db.close()
         await interaction.response.defer()
+        self.db.close()
+        
         await interaction.delete_original_response()
        
 
@@ -69,11 +69,11 @@ class LegionRaidCreation(discord.ui.View):
         disabled=True
     )
     async def button_callback(self, button, interaction):
-        #await interaction.response.defer()
+        await interaction.response.defer()
         embed = interaction.message.embeds[0]
         chanell = {}
 
-        await interaction.response.defer(ephemeral=True)
+        #await interaction.response.defer(ephemeral=True)
 
         if interaction.guild.get_channel(interaction.channel.id) is None:
             chanell = await interaction.guild.fetch_channel(interaction.channel.id)
@@ -208,7 +208,7 @@ class JoinRaid(discord.ui.View):
 
         if result is None:
             db.close()
-            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!')
+            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!', ephemeral=True)
         elif len(result) == 0:
             db.close()
             await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
@@ -249,13 +249,13 @@ class JoinRaid(discord.ui.View):
     )
 
     async def kick_callback(self, button, interaction):
-
+        await interaction.response.defer(ephemeral=True)
         user_list = []
         embed = interaction.message.embeds[0]
         author = embed.author.name
         embed_dict = embed.to_dict()
 
-        await interaction.response.defer(ephemeral=True)
+        
 
         if interaction.user.name != author:
             await interaction.followup.send('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
@@ -981,11 +981,12 @@ def run(bot):
     
     @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
     async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
+        await ctx.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
         member = ctx.guild.get_member_named(ctx.author.name)
         u_id = member.id
-        await ctx.defer(ephemeral=True)
+        
         classes_file = open('data/loa_data.json')
         data = json.load(classes_file)
         
