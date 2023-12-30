@@ -13,6 +13,7 @@ import asyncio
 import logging
 import re
 import time
+import requests
 
 
 logger = logging.getLogger('discord')
@@ -1196,6 +1197,17 @@ def run(bot):
         embed.add_field(name='User-guide',value=text)
 
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
+
+    @bot.slash_command(name="animal_bomb")
+    async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog'], required=True)):
+        await ctx.defer()
+
+        if animal == 'cat':
+            res = requests.get('https://api.thecatapi.com/v1/images/search')
+        elif animal == 'dog':
+            res = requests.get('https://api.thedogapi.com/v1/images/search')
+        result = res.json()
+        await ctx.followup.send(result[0].get('url'))
 
     @bot.slash_command(name="my_raids")
     async def my_raids(ctx):
