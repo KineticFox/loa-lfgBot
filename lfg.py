@@ -1153,15 +1153,11 @@ def run(bot):
     async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)):
         await ctx.defer(ephemeral=True)
         if amount:
-            #await ctx.channel.purge(limit=amount, bulk=False)
-            #await ctx.respond(f'deleted {amount} messages',ephemeral=True, delete_after=10)
-            for i in range(0, amount):
-                await ctx.channel.purge(limit=5, bulk=False)
-                await ctx.followup.send(f'deleted {amount -1} messages', ephemeral=True, delete_after=10)
-                sleep(10)
+            await ctx.channel.purge(limit=amount, bulk=False)
+            await ctx.followup.send(f'deleted {amount} messages', ephemeral=True, delete_after=10)
                 
         else:
-            await ctx.channel.purge(limit=5, bulk=False)
+            await ctx.channel.purge(limit=1, bulk=False)
             await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
     
     @bot.slash_command(name="sql")
@@ -1198,7 +1194,8 @@ def run(bot):
 
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
 
-    @bot.slash_command(name="animal_bomb")
+    @bot.slash_command(name="animal_bomb", description='Displays a random cat or dog image. 20sec command cooldown and images are deleted after 10 min')
+    @commands.cooldown(1,20, commands.BucketType.user)
     async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog'], required=True)):
         await ctx.defer()
 
@@ -1206,8 +1203,20 @@ def run(bot):
             res = requests.get('https://api.thecatapi.com/v1/images/search')
         elif animal == 'dog':
             res = requests.get('https://api.thedogapi.com/v1/images/search')
-        result = res.json()
-        await ctx.followup.send(result[0].get('url'))
+        
+        if res.status_code != 200:
+            await ctx.followup.send('some api error')    
+        else:
+            result = res.json()
+            img = result[0].get('url')
+            await ctx.followup.send(f'{img}', delete_after=600)
+
+    @bot.event
+    async def on_application_command_error(ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.respond(error, ephemeral=True)
+        else:
+            raise error
 
     @bot.slash_command(name="my_raids")
     async def my_raids(ctx):
