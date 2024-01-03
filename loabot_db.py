@@ -469,3 +469,31 @@ class LBDB:
             #res = self.cur.fetchall()
         except mariadb.Error as e:
             logger.warning(f'update emoji DB error - {e}')
+
+    def get_group_overview(self, table:str)->list:
+        """
+        returns a list of groups which aren't at max membercount
+        """
+        
+        try:
+            self.cur.execute(f'SELECT {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'group overview DB error - {e}')
+    
+    def add_admin(self, user_id:str)->str:
+        """
+        Adds user_id to the Discord Admins table.
+        """
+        try:
+            self.cur.execute(f'SELECT id FROM Techkeller_admins WHERE user_id=?', [user_id])
+            res = self.cur.fetchall()
+            if len(res) != 0:
+                logger.info(f'User already exists in DB')
+                return f'User already exists in DB'
+            else:
+                self.cur.execute(f'INSERT INTO Techkeller_admins(user_id) VALUES (?)', [user_id])
+                return f'added your DC-User to the DB'
+        except mariadb.Error as e:
+            logger.warning(f'Add user admin insert error: {e}')
