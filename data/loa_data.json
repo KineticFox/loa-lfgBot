@@ -19,6 +19,7 @@
         {"name": "Caliligos", "modes":"1490 Normal", "member":4, "rtype":"Guardian"},
         {"name": "Hanumatan", "modes":"1540 Normal", "member":4, "rtype":"Guardian"},     
         {"name": "Sonavel", "modes":"1580 Normal", "member":4, "rtype":"Guardian"},
+        {"name": "Gargadeth", "modes":"1610 Normal", "member":4, "rtype":"Guardian"},
         {"name":"Custom Group", "modes":"Custom", "member":4, "rtype":"Guardian"}
         
         
