@@ -49,7 +49,7 @@ class RaidOverview(discord.ui.View):
         bucket = self.cooldown.get_bucket(interaction.message)
         retry = bucket.update_rate_limit()
         if retry:
-            return await interaction.followup.send(f'Tray again in {round(retry, 1)} seconds', ephemeral=True)
+            return await interaction.followup.send(f'Try again in {round(retry, 1)} seconds', ephemeral=True)
 
         db = LBDB()
         db.use_db()
@@ -62,6 +62,7 @@ class RaidOverview(discord.ui.View):
         mode = []
         threads  = []
         membercount = []
+        title = []
 
         for g in groups_list:
             membercount.append(g.get("raid_mc"))
@@ -71,6 +72,7 @@ class RaidOverview(discord.ui.View):
             channel = await bot.fetch_channel(g.get('dc_id'))
             url = channel.jump_url
             threads.append(url)
+            title.append(g.get('raid_title'))
 
         
         time = datetime.now()
@@ -79,7 +81,7 @@ class RaidOverview(discord.ui.View):
         text_list = [f'**Raidübersicht für {tablename}:**']
                 
         for i in range(len(threads)):
-            text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
+            text_list.append(f'**Titel**: {title[i]}\n**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
         
         text_list.append(f'\n*last updated at: {current_time}*')
         text = "\n".join(t for t in text_list)       
@@ -1333,15 +1335,18 @@ def run(bot):
         mode = []
         threads  = []
         membercount = []
+        title = []
 
         for g in groups_list:
             membercount.append(g.get("raid_mc"))
             raid.append(f'{g.get("raid")}')
             m = g.get('raid_mode')
             mode.append(m.split(' ')[0])
-            channel = await bot.fetch_channel(g.get('dc_id'))
+            channel = await ctx.fetch_message(g.get('dc_id'))
             url = channel.jump_url
             threads.append(url)
+            title.append(g.get('raid_title'))
+
 
         
         time = datetime.now()
@@ -1350,7 +1355,7 @@ def run(bot):
         text_list = [f'**Raidübersicht für {tablename}:**']
                 
         for i in range(len(threads)):
-            text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
+            text_list.append(f'**Titel**: {title[i]}\n**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
         
         text_list.append(f'\n*last updated at: {current_time}*')
         text = "\n".join(t for t in text_list)       

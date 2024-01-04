@@ -476,7 +476,7 @@ class LBDB:
         """
         
         try:
-            self.cur.execute(f'SELECT {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
+            self.cur.execute(f'SELECT {table}_groups.raid_title, {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
