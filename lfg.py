@@ -5,6 +5,8 @@ from discord.enums import ChannelType, ComponentType
 from discord.ext import commands
 from discord.interactions import Interaction
 from discord.ui.item import Item
+from discord.ui import Button
+from discord.ext.pages import Paginator, Page
 import dotenv
 from loabot_db import LBDB
 import json
@@ -31,7 +33,9 @@ raids = {}
 class RaidOverview(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+
         self.cooldown = commands.CooldownMapping.from_cooldown(1, 120, commands.BucketType.member)
+
 
     @discord.ui.button(
         label='Update',
@@ -41,54 +45,48 @@ class RaidOverview(discord.ui.View):
     )
     async def callback(self, button, interaction):
         await interaction.response.defer()
+
         bucket = self.cooldown.get_bucket(interaction.message)
         retry = bucket.update_rate_limit()
         if retry:
-            return await interaction.followup.send(f'Please wait for {round(retry, 1)} seconds', ephemeral=True, delete_after=20)
+            return await interaction.followup.send(f'Tray again in {round(retry, 1)} seconds', ephemeral=True)
+
         db = LBDB()
         db.use_db()
         tablename = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        panel = discord.Embed(
-            title='Server Group overview / Server Gruppenübersicht',
-            color=discord.Colour.blue(),
-        )
-
         groups_list = db.get_group_overview(tablename)
         db.close()
-
+        
         raid = []
         mode = []
         threads  = []
         membercount = []
 
         for g in groups_list:
-            #titles.append(g.get('raid_title'))
             membercount.append(g.get("raid_mc"))
-            raid.append(f'{g.get("raid")}, {g.get("raid_mc")}')
+            raid.append(f'{g.get("raid")}')
             m = g.get('raid_mode')
             mode.append(m.split(' ')[0])
             channel = await bot.fetch_channel(g.get('dc_id'))
             url = channel.jump_url
             threads.append(url)
 
-        e_threads = "\n".join(str(thread) for thread in threads)
-        e_mc = "\n".join(str(mc) for mc in membercount)
-        e_raid = "\n".join(str(r) for r in raid)
-        e_mode = "\n".join(str(m) for m in mode)
-
+        
         time = datetime.now()
         current_time = time.strftime("%H:%M:%S")
 
-
-        panel.add_field(name='Thread', value=e_threads)
-        panel.add_field(name='Raid, Member', value=e_raid)
-        panel.add_field(name='Mode', value=e_mode)
+        text_list = [f'**Raidübersicht für {tablename}:**']
+                
+        for i in range(len(threads)):
+            text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
         
-        panel.set_footer(text=f'last update at: {current_time}')
+        text_list.append(f'\n*last updated at: {current_time}*')
+        text = "\n".join(t for t in text_list)       
+        
+        await interaction.message.edit(text, view=self)
 
-        #await interaction.followup.send(f'Aktuelle Gruppenübersicht für {tablename}', embed=panel)
-        await interaction.message.edit(embed=panel, view=self)
+        
 
 
 class LegionRaidCreation(discord.ui.View):
@@ -1321,52 +1319,43 @@ def run(bot):
 
         await ctx.followup.send(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
     
-    @bot.slash_command(name='raids_overview')
+    @bot.slash_command(name='raid_overview')
     async def raids_overview(ctx):
         await ctx.defer()
         db = LBDB()
         db.use_db()
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
 
-        panel = discord.Embed(
-            title='Server Group overview / Server Gruppenübersicht',
-            color=discord.Colour.blue(),
-        )
-
         groups_list = db.get_group_overview(tablename)
         db.close()
-
+        
         raid = []
         mode = []
         threads  = []
         membercount = []
 
         for g in groups_list:
-            #titles.append(g.get('raid_title'))
             membercount.append(g.get("raid_mc"))
-            raid.append(f'{g.get("raid")}, {g.get("raid_mc")}')
+            raid.append(f'{g.get("raid")}')
             m = g.get('raid_mode')
             mode.append(m.split(' ')[0])
             channel = await bot.fetch_channel(g.get('dc_id'))
             url = channel.jump_url
             threads.append(url)
 
-        e_threads = "\n".join(str(thread) for thread in threads)
-        e_mc = "\n".join(str(mc) for mc in membercount)
-        e_raid = "\n".join(str(r) for r in raid)
-        e_mode = "\n".join(str(m) for m in mode)
-
+        
         time = datetime.now()
         current_time = time.strftime("%H:%M:%S")
 
-
-        panel.add_field(name='Thread', value=e_threads)
-        panel.add_field(name='Raid, Member', value=e_raid)
-        panel.add_field(name='Mode', value=e_mode)
+        text_list = [f'**Raidübersicht für {tablename}:**']
+                
+        for i in range(len(threads)):
+            text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
         
-        panel.set_footer(text=f'last update at: {current_time}')
-
-        await ctx.followup.send(f'Aktuelle Gruppenübersicht für {tablename}', embed=panel, view=RaidOverview())
+        text_list.append(f'\n*last updated at: {current_time}*')
+        text = "\n".join(t for t in text_list)       
+        
+        await ctx.followup.send(text, view=RaidOverview())
 
     @bot.slash_command(name="add_dcadmin", description="Adds a user to the admin table ")
     async def db_addadmin(ctx, user: discord.Member ):
