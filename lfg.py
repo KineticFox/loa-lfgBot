@@ -63,30 +63,49 @@ class RaidOverview(discord.ui.View):
         threads  = []
         membercount = []
         title = []
+        embed = interaction.message.embeds[0]
+
+        length_check = False
+        embed_length= len(embed.description)
 
         for g in groups_list:
             membercount.append(g.get("raid_mc"))
             raid.append(f'{g.get("raid")}')
             m = g.get('raid_mode')
             mode.append(m.split(' ')[0])
-            channel = await bot.fetch_channel(g.get('dc_id'))
-            url = channel.jump_url
+            thread = await interaction.guild.fetch_channel(g.get('dc_id'))
+            channel_id = thread.parent_id
+            channel = await interaction.guild.fetch_channel(channel_id)            
+            message = await channel.fetch_message(g.get('dc_id'))
+            url = message.jump_url
             threads.append(url)
+            new_length = len(threads) + embed_length
+            if new_length >= 3900:
+                length_check = True
+            
             title.append(g.get('raid_title'))
 
         
         time = datetime.now()
         current_time = time.strftime("%H:%M:%S")
 
-        text_list = [f'**Raidübersicht für {tablename}:**']
-                
-        for i in range(len(threads)):
-            text_list.append(f'**Titel**: {title[i]}\n**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
+        if length_check:
+            embed.add_field(name='Achtung', value='Aktuell gibt es zu viele offene Raids um alle anzuzeigen.')
+            embed.set_footer(text=f'last updated at: {current_time}')
+            await interaction.message.edit(embed=embed, view=self)
         
-        text_list.append(f'\n*last updated at: {current_time}*')
-        text = "\n".join(t for t in text_list)       
-        
-        await interaction.message.edit(text, view=self)
+        else:
+
+            text_list = [f'**Raidübersicht für {tablename}:**']
+                    
+            for i in range(len(threads)):
+                text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
+            
+            text = "\n".join(t for t in text_list) 
+
+            embed.description=text      
+            embed.set_footer(text=f'last updated at: {current_time}')
+            await interaction.message.edit(embed=embed, view=self)
 
         
 
@@ -1002,6 +1021,27 @@ def stop(bot):
 def run(bot):
     dotenv.load_dotenv()
     token = str(os.getenv("TOKEN"))
+
+    @bot.command()
+    async def load_cog(ctx, cog):
+        bot.load_extension(f'cogs.{cog}')
+
+        if  cog == 'orga':
+            welcome = bot.get_cog('WelcomeSetup')
+            await welcome.setupGuild()
+        
+        await ctx.send(f'loaded {cog} cog', delete_after=10)
+    
+    @bot.command()
+    async def reload_cog(ctx, cog):
+        bot.reload_extension(f'cogs.{cog}')
+
+        if  cog == 'orga':
+            welcome = bot.get_cog('WelcomeSetup')
+            await welcome.setupGuild()
+        
+        await ctx.send(f'reloaded {cog} cog', delete_after=10)
+
     
     
     @bot.event
@@ -1330,6 +1370,11 @@ def run(bot):
 
         groups_list = db.get_group_overview(tablename)
         db.close()
+
+        embed = discord.Embed(
+            title='Raid overview / Raidübersicht',
+            color=discord.Colour.green(),
+        )
         
         raid = []
         mode = []
@@ -1337,30 +1382,53 @@ def run(bot):
         membercount = []
         title = []
 
+        #add boolean
+        length_check = False
+        #add embed creation depending on boolean
+
         for g in groups_list:
+            embed_length = len(embed.description)
+                    
+            m = g.get('raid_mode')
+            
+            thread = await bot.fetch_channel(g.get('dc_id'))
+            channel_id = thread.parent_id
+            channel = await bot.fetch_channel(channel_id)            
+            message = await channel.fetch_message(g.get('dc_id'))
+            url = message.jump_url
+
+            threads.append(url)
+            new_length = len(threads) + embed_length
+            
             membercount.append(g.get("raid_mc"))
             raid.append(f'{g.get("raid")}')
-            m = g.get('raid_mode')
             mode.append(m.split(' ')[0])
-            channel = await ctx.fetch_message(g.get('dc_id'))
-            url = channel.jump_url
-            threads.append(url)
             title.append(g.get('raid_title'))
 
-
-        
         time = datetime.now()
         current_time = time.strftime("%H:%M:%S")
+        updated = f'last updated at: {current_time}'
 
-        text_list = [f'**Raidübersicht für {tablename}:**']
-                
-        for i in range(len(threads)):
-            text_list.append(f'**Titel**: {title[i]}\n**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
-        
-        text_list.append(f'\n*last updated at: {current_time}*')
-        text = "\n".join(t for t in text_list)       
-        
-        await ctx.followup.send(text, view=RaidOverview())
+        if length_check:
+            embed.add_field(name='Achtung', value='Aktuell gibt es zu viele offene Raids um alle anzuzeigen.')
+            embed.set_footer(text=updated)
+            await ctx.followup.send(view=RaidOverview(), embed=embed)
+        else:    
+
+            text_list = [f'**Raidübersicht für {tablename}:**']
+                    
+            for i in range(len(threads)):
+                text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}') #**Titel**: {title[i]}\n
+            
+            
+            embed.set_footer(text=updated)
+
+            #text_list.append(f'\n*last updated at: {current_time}*')
+            text = "\n".join(t for t in text_list)
+            embed.description = text
+            
+            await ctx.followup.send(view=RaidOverview(), embed=embed)
+
 
     @bot.slash_command(name="add_dcadmin", description="Adds a user to the admin table ")
     async def db_addadmin(ctx, user: discord.Member ):
