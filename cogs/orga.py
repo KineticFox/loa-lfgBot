@@ -2,7 +2,7 @@ import os
 from discord.ext import commands
 import discord
 
-class WelcomeSetup(commands.Cog):
+class MemberManagement(commands.Cog):
     def __init__(self, bot:discord.bot) -> None:
         super().__init__()
         self.bot = bot
@@ -35,7 +35,7 @@ class WelcomeSetup(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(WelcomeSetup(bot))
+    bot.add_cog(MemberManagement(bot))
     
         
 

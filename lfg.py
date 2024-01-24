@@ -4,6 +4,7 @@ from discord.components import SelectOption
 from discord.enums import ChannelType, ComponentType
 from discord.ext import commands
 from discord.interactions import Interaction
+from discord.ui.input_text import InputText
 from discord.ui.item import Item
 from discord.ui import Button
 from discord.ext.pages import Paginator, Page
@@ -243,6 +244,7 @@ class JoinRaid(discord.ui.View):
         self.embed = None
         self.group_id = None
         #self.message = message
+        self.cooldown = commands.CooldownMapping.from_cooldown(1, 10, commands.BucketType.member)
 
     @discord.ui.button(
         label='Join raid',
@@ -250,76 +252,79 @@ class JoinRaid(discord.ui.View):
         custom_id= 'join_button'
     )
 
-    async def join_callback(self, button, interaction):         
-        
+    async def join_callback(self, button, interaction):
+
         await interaction.response.defer()
 
-        m_id = interaction.message.id
-        c_id = interaction.channel.id
-        user = interaction.user.name
-        member = interaction.guild.get_member_named(user)
-        u_id = member.id  
-    
-        self.embed = interaction.message.embeds[0]
+        bucket = self.cooldown.get_bucket(interaction.message)
+        retry = bucket.update_rate_limit()
+        if retry:
+            return await interaction.followup.send(f'Try again in {round(retry, 1)} seconds', ephemeral=True)
+        else:    
 
-        button.disabled=True
+            m_id = interaction.message.id
+            c_id = interaction.channel.id
+            user = interaction.user.name
+            member = interaction.guild.get_member_named(user)
+            u_id = member.id  
+            embed = interaction.message.embeds[0]
+            self.embed = embed
+            db = LBDB()
+            db.use_db()
 
-        db = LBDB()
-        db.use_db()
+            guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+            result = db.select_chars(u_id, guild_name)
+            edict = embed.to_dict()
+            fields = edict.get('fields')
+            group_id = fields[8].get('value') #groupd tabel id
+            thread_id = None
+            thread = None
+            raid = fields[1].get('value')
+            raidname = raid.split(' -')[0]
 
-        result = db.select_chars(u_id, guild_name)
-        edict = self.embed.to_dict()
-        fields = edict.get('fields')
-        group_id = fields[8].get('value') #groupd tabel id
-        thread_id = None
-        thread = None
-        raid = fields[1].get('value')
-        raidname = raid.split(' -')[0]
+            res = db.get_raid_mc(raidname)
+            mc = res['member']
 
-        res = db.get_raid_mc(raidname)
-        mc = res['member']
+            g_res= db.get_group(group_id, guild_name)
+            g_mc = g_res['raid_mc']
 
-        g_res= db.get_group(group_id, guild_name)
-        g_mc = g_res['raid_mc']
+            
+            #check if user is already connected to this raid id --> raidmember table
+            join_check = db.raidmember_check(group_id, u_id, guild_name)
+            
 
-        
-        #check if user is already connected to this raid id --> raidmember table
-        join_check = db.raidmember_check(group_id, u_id, guild_name)
-        
-
-        if result is None:
-            db.close()
-            await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!', ephemeral=True)
-        elif len(result) == 0:
-            db.close()
-            await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
-        elif join_check is not None:
-            char = join_check['char_name']
-            panel = discord.Embed(
-                title='Edit your char / Bearbeite deinen Charakter',
-                color=discord.Colour.blue(),
-            )
-            panel.add_field(name=chr(173), value=f'Wähle {char} erneut um sein ilvl zu erneurern oder wähle einen anderen char.')
-            await interaction.message.edit(view=self)# new to disable button
-            chanell = await interaction.guild.fetch_channel(c_id)
-            thread = chanell.get_thread(m_id)
-            update = True
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=char), embed=panel)
-        elif g_mc >= mc:
-            db.close()
-            await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
-        else:
-            panel = discord.Embed(
-                title='Please choose your Character / Bitte wähle deinen Charakter',
-                color=discord.Colour.blue(),
-            )
-            update = False
-            await interaction.message.edit(view=self)# new to disable button
-            chanell = await interaction.guild.fetch_channel(c_id)
-            thread = chanell.get_thread(m_id)
-            await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=None), embed=panel)
+            if result is None:
+                db.close()
+                await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!', ephemeral=True)
+            elif len(result) == 0:
+                db.close()
+                await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
+            elif join_check is not None:
+                char = join_check['char_name']
+                panel = discord.Embed(
+                    title='Edit your char / Bearbeite deinen Charakter',
+                    color=discord.Colour.blue(),
+                )
+                panel.add_field(name=chr(173), value=f'Wähle {char} erneut um sein ilvl zu erneurern oder wähle einen anderen char.')
+                await interaction.message.edit(view=self)# new to disable button
+                chanell = await interaction.guild.fetch_channel(c_id)
+                thread = chanell.get_thread(m_id)
+                update = True
+                await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=char), embed=panel)
+            elif g_mc >= mc:
+                db.close()
+                await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
+            else:
+                panel = discord.Embed(
+                    title='Please choose your Character / Bitte wähle deinen Charakter',
+                    color=discord.Colour.blue(),
+                )
+                update = False
+                await interaction.message.edit(view=self)# new to disable button
+                chanell = await interaction.guild.fetch_channel(c_id)
+                thread = chanell.get_thread(m_id)
+                await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=None), embed=panel)
                 
 
 
@@ -496,6 +501,9 @@ class JoinRaid(discord.ui.View):
 
         thread_id = None
         thread = None
+        
+        #admin_role = discord.utils.get(await interaction.guild.fetch_roles(), name='Dev')
+        admin_role_id = 1006783350188560416
 
         chanell = {}
         if interaction.guild.get_channel(interaction.channel.id) is None:
@@ -513,9 +521,58 @@ class JoinRaid(discord.ui.View):
             await thread.delete()
             
             await interaction.message.delete()
+        elif interaction.user.get_role(admin_role_id):
+            db.delete_raids(fields[8].get('value'), guild_name)
+            db.close()
+            await thread.delete()
+            
+            await interaction.message.delete()
         else:
             db.close()
             await interaction.followup.send('you can not delete the party because you are not the owner / Du kannst die Gruppe nicht löschen, da du nicht der Leiter bist.', ephemeral=True)
+
+    @discord.ui.button(
+        label='Edit Date/time',
+        style=discord.ButtonStyle.blurple,
+        custom_id= 'date_button'
+    )
+
+    async def date_callback(self, button , interaction):
+        #await interaction.response.defer()
+
+        embed = interaction.message.embeds[0]
+        author = embed.author.name
+
+        if interaction.user.name == author:
+            await interaction.response.send_modal(DateModal(title='Datum ändern',view=self))
+        else:
+            await interaction.response.send_message('You are not the Raidleader / Du bist nicht der Raidanführer!', ephemeral=True) 
+
+class DateModal(discord.ui.Modal):
+    def __init__(self, title: str,view) -> None:
+        super().__init__(title=title)
+        self.view = view
+        self.add_item(discord.ui.InputText(label='New Date/Neue Zeit'))   
+    
+    
+    async def callback(self, interaction: Interaction):
+        embed = interaction.message.embeds[0]
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+        date = self.children[0].value
+        embed.set_field_at(0, name='Date/Time:', value=date)
+
+        e_dict = embed.to_dict()
+        fields = e_dict.get('fields')
+
+        db = LBDB()
+        db.use_db()
+
+        db.update_date(guild_name, fields[8].get('value'), date)
+        db.close()
+        await interaction.response.send_message('Datum wurde geändert/Date changed', ephemeral=True)
+        await interaction.message.edit(embed=embed, view=self.view)
+
+        
 
 #--------------------- Subclassed view elements -----------------------------------#
 
@@ -532,7 +589,6 @@ class JoinDialogue(discord.ui.View):
         self.guild_name = guild_name
         self.channel = channel
         self.old_char = old_char
-        #self.orgview.children[0].disabled=True
         def setup_chars():
             result = self.db.select_chars(self.user_id, self.guild_name)  
 
@@ -550,7 +606,6 @@ class JoinDialogue(discord.ui.View):
 
     async def on_timeout(self):
         m = await self.channel.fetch_message(self.m)
-        self.orgview.children[0].disabled = False
         await m.edit(view=self.orgview, embed=self.orgview.embed)
         self.clear_items()
         self.stop()
@@ -1027,7 +1082,7 @@ def run(bot):
         bot.load_extension(f'cogs.{cog}')
 
         if  cog == 'orga':
-            welcome = bot.get_cog('WelcomeSetup')
+            welcome = bot.get_cog('MemberManagement')
             await welcome.setupGuild()
         
         await ctx.send(f'loaded {cog} cog', delete_after=10)
