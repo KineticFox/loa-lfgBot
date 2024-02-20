@@ -1175,7 +1175,8 @@ def run(bot):
         
         db = LBDB()
         db.use_db()
-        result = db.update_chars(charname, ilvl, delete, tablename)
+        user_id = ctx.user.id
+        result = db.update_chars(charname, ilvl, delete, tablename, user_id)
         db.close()
         await ctx.send_followup(result, ephemeral=True, delete_after=20)
     

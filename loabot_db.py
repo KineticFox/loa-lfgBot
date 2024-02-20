@@ -381,7 +381,7 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Database remove Groupmember Error: {e}')
 
-    def update_chars(self, charname, ilvl, delete, table)-> str:
+    def update_chars(self, charname, ilvl, delete, table, user)-> str:
         """
         updates a given char in the DB, deletes the char if delete=yes
 
@@ -391,28 +391,39 @@ class LBDB:
             ilvl (int): the ilvl of the char
             delete (boolean): boolean to determin if char should be deleted or not
             table (string): refers on which DC-Server this command is invoked
+            user (int): the user id of the discord user
 
         Returns:
         --------
             string: feedback for this action
         """
         try:
-            if delete == 'no':
-                self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
-                res = self.cur.fetchone()
-                if res is None :
-                    return 'This Char does not exist / Dieser Char existiert nicht'
+            self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
+            res = self.cur.fetchone()
+            if res is None :
+                return 'This Char does not exist / Dieser Char existiert nicht'
+            else:
+                self.cur.execute(f'SELECT id FROM {table}_user WHERE user_id=?', [user])
+                user_res = self.cur.fetchone()
+                if res['user_id'] == user_res['id']:
+                    if delete == 'no':
+                        self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
+                        res = self.cur.fetchone()
+                        if res is None :
+                            return 'This Char does not exist / Dieser Char existiert nicht'
+                        else:
+                            self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
+                            return 'Updated char'
+                    elif delete == 'yes':
+                        self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?', [charname])
+                        res = self.cur.fetchall()
+                        if len(res) == 0 or res is None:
+                            self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
+                            return 'deleted char'
+                        else:
+                            return 'Your Char is member of some raids, please leave first / Dein Char ist noch Mitglied von Raids bitte verlasse diese zuerst.'
                 else:
-                    self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
-                    return 'Updated char'
-            elif delete == 'yes':
-                self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?', [charname])
-                res = self.cur.fetchall()
-                if len(res) == 0 or res is None:
-                    self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
-                    return 'deleted char'
-                else:
-                    return 'Your Char is member of some raids, please leave first / Dein Char ist noch Mitglied von Raids bitte verlasse diese zuerst.'
+                    return 'You are naughty, this is not your Char / Du bist ungezogen, das ist nicht dein Char'
         except mariadb.Error as e:
             logger.warning(f'Databse update char Error - {e}')
             return f'Databse update char Error - {e}'
