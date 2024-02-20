@@ -296,10 +296,10 @@ class JoinRaid(discord.ui.View):
 
             if result is None:
                 db.close()
-                await interaction.followup.send('Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!', ephemeral=True)
+                await interaction.followup.send(f'{interaction.user.mention} Please register your user and chars first! / Bitte erstelle zuerst einen Charakter!', ephemeral=True)
             elif len(result) == 0:
                 db.close()
-                await interaction.followup.send('No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
+                await interaction.followup.send(f'{interaction.user.mention} No registered chars found. Please register your chars first! / Kein Charakter von dir gefunden, bitte erstelle zuerst einen Charakter',  ephemeral=True)
             elif join_check is not None:
                 char = join_check['char_name']
                 panel = discord.Embed(
@@ -311,10 +311,10 @@ class JoinRaid(discord.ui.View):
                 chanell = await interaction.guild.fetch_channel(c_id)
                 thread = chanell.get_thread(m_id)
                 update = True
-                await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=char), embed=panel)
+                await interaction.followup.send(f'{interaction.user.mention}',ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=char), embed=panel)
             elif g_mc >= mc:
                 db.close()
-                await interaction.followup.send(f'This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
+                await interaction.followup.send(f'{interaction.user.mention} This group has the max member count reached / Diese Gruppe hat die maximale Mitgliederanzahl erreicht', ephemeral=True)
             else:
                 panel = discord.Embed(
                     title='Please choose your Character / Bitte wähle deinen Charakter',
@@ -324,7 +324,7 @@ class JoinRaid(discord.ui.View):
                 await interaction.message.edit(view=self)# new to disable button
                 chanell = await interaction.guild.fetch_channel(c_id)
                 thread = chanell.get_thread(m_id)
-                await interaction.followup.send(ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=None), embed=panel)
+                await interaction.followup.send(f'{interaction.user.mention}',ephemeral=True, view=JoinDialogue(self, db, group_id, thread, m_id, u_id, guild_name, chanell, old_char=None), embed=panel)
                 
 
 
@@ -1140,7 +1140,7 @@ def run(bot):
 
     
     @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
-    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DPS', 'SUPP'])):
+    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DD', 'SUPP'])):
         await ctx.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
