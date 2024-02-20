@@ -158,14 +158,31 @@ class LBDB:
             logger.warning(f'DB setup Error - {e}')
 
     def use_db(self):
+        """
+        specifies which table should be used.\n
+        Is set via env variable
+        """
         name = os.getenv("DB_NAME")
         self.cur.execute(f"use {name};")
     
     def close(self):
+        """
+        closes DB conection
+        """
         self.connection.close()
 
-    def get_my_raids(self, user_id, table):
-        group_list = []
+    def get_my_raids(self, user_id, table) -> 'list[dict]':
+        """
+        DB Helperfunction for raids of a player
+
+        Returns: 
+        --------
+            char_name (str): char name,
+            raid (str): raid,
+            raid_title (str): title of the group,
+            dc_id (str): thread id of the group
+        """
+
         try:
             self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id  FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
             res = self.cur.fetchall()
@@ -175,7 +192,16 @@ class LBDB:
             logger.warning(f'DB get my raids Error - {e}')
         
 
-    def get_chars(self, user_id, table):
+    def get_chars(self, user_id, table) -> 'list[dict]':
+        """
+        DB Helperfunction for chars of a player
+
+        Returns:
+        -------- 
+            char_name (str): char name,
+            class (str): class of the char,
+            ilvl (int): ilvl of the char
+        """
         try:
             self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user_id]) 
             res = self.cur.fetchall()
@@ -184,7 +210,14 @@ class LBDB:
             logger.warning(f'Database get chars Error - {e}')
             return ['error']
         
-    def get_char_ilvl(self, name, table):
+    def get_char_ilvl(self, name, table) -> dict:
+        """
+        DB Helperfunction for one ilvl of a specified char name
+
+        Returns:
+        -------- 
+            ilvl (int): ilvl of given char
+        """
         try:
             self.cur.execute(f'SELECT ilvl FROM {table}_chars WHERE char_name=?', [name])
             res = self.cur.fetchone()
@@ -192,28 +225,76 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'DB get ilvl Error - {e}')
 
-    def get_group(self, id, table):
+    def get_group(self, id, table)-> dict:
+        """
+        DB Helperfunction for retrieving all values of one group identified by its id
+
+        Returns:
+        --------
+            dict (dict) { 
+                id (int): group db id,
+                raid_title (str): title of the group,
+                raid (str): which raid,
+                raid_mode (str): mode of the raid (normal hard, etc.),
+                raid_mc (int): current member in this group,
+                date (str): planned date of the group,
+                dc_id (str): thread id of this group
+            }
+        """
         try:
             self.cur.execute(f'SELECT * FROM {table}_groups WHERE id=?', [id])
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'Database get group Error - {e}')
 
-    def get_raidtype(self, name, table):
+    def get_raidtype(self, name, table) -> dict:
+        """
+        DB Helperfunction for retrieving max member count and type from a raid
+
+        Returns:
+        --------
+            dict (dict) { 
+                member (int): max member count for this raid,
+                type (str): type of the raid (Legion, etc.)
+            }
+        """
         try:
             self.cur.execute(f'SELECT member,type FROM {table}_raids WHERE name=?', [name]) 
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'Database raid type Error - {e}')
     
-    def get_raidmember(self, group_id, table):
+    def get_raidmember(self, group_id, table) -> dict:
+        """
+        DB Helperfunction for retrieving the first entry user from a specified group
+
+        Returns:
+        --------
+            dict (dict) { 
+                user_id (int): db user id of this user,
+            }
+        """
         try:
             self.cur.execute(f'SELECT user_id FROM {table}_raidmember WHERE raid_id=?',[group_id])
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'DB raidmember Error - {e}')
 
-    def get_username(self, id, table):
+    def get_username(self, id, table) ->dict:
+        """
+        DB Helperfunction for retrieving the dc user name
+
+        Parameters:
+        -----------
+            id (int): the id of the user,
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            dict (dict) { 
+                name (str): the dc user name
+            }
+        """
         try:
             self.cur.execute(f'SELECT name FROM {table}_user WHERE id=?',[id])
             return self.cur.fetchone()
@@ -221,53 +302,151 @@ class LBDB:
             logger.warning(f'DB user name Error - {e}')
 
     def update_group_mc(self, id, count, table):
+        """
+        Updates the member count of specified Group.
+
+        Parameters:
+        -----------
+            id (int): the id of the group u want to update,
+            count (int): the new member count,
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            None
+        """
         try:
             self.cur.execute(f'UPDATE {table}_groups SET raid_mc=? WHERE id=?', [count, id]) 
         except mariadb.Error as e:
             logger.warning(f'DB update mc Error - {e}')
     
     def raidmember_check(self, raidid, user_id, table):
+        """
+        Gets the charname of a user from a give group. If user is in this group returns dict with users charname, else empty dict.
+
+        Parameters:
+        -----------
+            raid_id (int): the id of the group
+            user_id (string): the dc user id
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            dict (dict) {
+                char_name (string): the charname
+            }
+        """
         try:
             self.cur.execute(f'SELECT char_name FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [raidid, user_id])
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'raidmember check Error: {e}')
 
-    def add_groupmember(self, raid_id, user_id, charname, table):
+    def add_groupmember(self, raid_id, user_id, charname, table)->None:
+        """
+        Adds a user and his char to the raidmember table with the group he joined.
+
+        Parameters:
+        -----------
+            raid_id (int): the id of the group
+            user_id (string): the dc user id
+            charname (string): the name of the character
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            None
+        """
         try:
             self.cur.execute(f'INSERT INTO {table}_raidmember(raid_id, user_id, char_name) Values(?, (SELECT id FROM {table}_user WHERE user_id=?), ?)', [raid_id, user_id, charname])
         except mariadb.Error as e:
            logger.warning(f'Database add groupmember Error - {e}')
 
-    def remove_groupmember(self, user_id, raidid, table):
+    def remove_groupmember(self, user_id, raidid, table) -> None:
+        """
+        Removes a user from the raidmember table.
+
+        Parameters:
+        -----------
+            raidid (int): the id of the group
+            user_id (string): the dc user id
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            None
+        """
         try:
             self.cur.execute(f'DELETE FROM {table}_raidmember WHERE raid_id=? AND user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [raidid, user_id]) 
         except mariadb.Error as e:
             logger.warning(f'Database remove Groupmember Error: {e}')
 
-    def update_chars(self, charname, ilvl, delete, table):
+    def update_chars(self, charname, ilvl, delete, table, user)-> str:
+        """
+        updates a given char in the DB, deletes the char if delete=yes
+
+        Parameters:
+        -----------
+            charname (string): the name of the char
+            ilvl (int): the ilvl of the char
+            delete (boolean): boolean to determin if char should be deleted or not
+            table (string): refers on which DC-Server this command is invoked
+            user (int): the user id of the discord user
+
+        Returns:
+        --------
+            string: feedback for this action
+        """
         try:
-            if delete == 'no':
-                self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
-                res = self.cur.fetchone()
-                if res is None :
-                    return 'This Char does not exist / Dieser Char existiert nicht'
+            self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
+            res = self.cur.fetchone()
+            if res is None :
+                return 'This Char does not exist / Dieser Char existiert nicht'
+            else:
+                self.cur.execute(f'SELECT id FROM {table}_user WHERE user_id=?', [user])
+                user_res = self.cur.fetchone()
+                if res['user_id'] == user_res['id']:
+                    if delete == 'no':
+                        self.cur.execute(f'SELECT user_id FROM {table}_chars WHERE char_name=?', [charname])
+                        res = self.cur.fetchone()
+                        if res is None :
+                            return 'This Char does not exist / Dieser Char existiert nicht'
+                        else:
+                            self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
+                            return 'Updated char'
+                    elif delete == 'yes':
+                        self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?', [charname])
+                        res = self.cur.fetchall()
+                        if len(res) == 0 or res is None:
+                            self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
+                            return 'deleted char'
+                        else:
+                            return 'Your Char is member of some raids, please leave first / Dein Char ist noch Mitglied von Raids bitte verlasse diese zuerst.'
                 else:
-                    self.cur.execute(f'UPDATE {table}_chars SET ilvl=? WHERE char_name=?', [ilvl, charname])
-                    return 'Updated char'
-            elif delete == 'yes':
-                self.cur.execute(f'SELECT raid_id FROM {table}_raidmember WHERE char_name=?', [charname])
-                res = self.cur.fetchall()
-                if len(res) == 0 or res is None:
-                    self.cur.execute(f'DELETE FROM {table}_chars WHERE char_name=? AND ilvl=?', [charname, ilvl])
-                    return 'deleted char'
-                else:
-                    return 'Your Char is member of some raids, please leave first / Dein Char ist noch Mitglied von Raids bitte verlasse diese zuerst.'
+                    return 'You are naughty, this is not your Char / Du bist ungezogen, das ist nicht dein Char'
         except mariadb.Error as e:
             logger.warning(f'Databse update char Error - {e}')
             return f'Databse update char Error - {e}'
             
-    def get_raids(self, table):
+    def get_raids(self, table)->'list[dict]':
+        """
+        Returns a list with all Raids available
+
+        Parameters:
+        -----------
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            [
+                {
+                    name (string): name of the Raid
+                    mode (string): Raidmode
+                    member (int): Max membercount of the raid
+                    type (string): Raidtype
+                }
+            ]
+        """
         try:
             self.cur.execute(f'Select * FROM {table}_raids')
             return self.cur.fetchall()
@@ -275,7 +454,21 @@ class LBDB:
             logger.warning(f'Database get raid Error - {e}')
             return ['error']
         
-    def get_raid_mc(self, raid):
+    def get_raid_mc(self, raid) -> dict:
+        """
+        Returns the max membercount for specified raid
+
+        Parameters:
+        -----------
+
+            raid (string): raid name
+
+        Returns:
+        --------
+            dict (dict){
+                member (int): max member count for raid
+            }
+        """
         table = 'TechKeller'
         try:
             self.cur.execute(f'SELECT member FROM {table}_raids WHERE name=?', [raid])
@@ -285,7 +478,26 @@ class LBDB:
             logger.warning(f'Database get raid mc Error - {e}')
 
 
-    def get_raids_setup(self,tables):
+    def get_raids_setup(self,tables)-> 'list[dict]':
+        """
+        x
+
+        Parameters:
+        -----------
+
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            [
+                {
+                    name (string): name of the Raid
+                    mode (string): Raidmode
+                    member (int): Max membercount of the raid
+                    type (string): Raidtype
+                }
+            ]
+        """
         try:
             for table in tables:
                 self.cur.execute(f'Select * FROM {table}_raids')
@@ -295,6 +507,19 @@ class LBDB:
             return ['error']
 
     def save_image(self, raid, url, table):
+        """
+        Saves the image url with the raid name
+
+        Parameters:
+        -----------
+            raid (string): name of the raid
+            url (string): url of the image
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            None
+        """
         try:
             self.cur.execute(f'SELECT * FROM {table}_images WHERE raid=?', [raid])
             result = self.cur.fetchone()
@@ -308,6 +533,18 @@ class LBDB:
             logger.warning(f'Database save image Error - {e}')
 
     def get_image_url(self, raid, table):
+        """ 
+        x
+
+        Parameters:
+        -----------
+
+            table (string): refers on which DC-Server this command is invoked
+
+        Returns:
+        --------
+            None
+        """
         try:
             self.cur.execute(f'SELECT url FROM {table}_images WHERE raid=?', [raid])
             return self.cur.fetchone()
@@ -476,7 +713,7 @@ class LBDB:
         """
         
         try:
-            self.cur.execute(f'SELECT {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
+            self.cur.execute(f'SELECT {table}_groups.raid_title, {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
@@ -497,3 +734,23 @@ class LBDB:
                 return f'added your DC-User to the DB'
         except mariadb.Error as e:
             logger.warning(f'Add user admin insert error: {e}')
+
+    def update_date(self, table:str, group_id:int, date:str) -> None:
+        """
+        Updates the date and time of given group
+
+        Parameters:
+        ----------
+            table (string): refers on which DC-Server this command is invoked
+            group_id (int): the id of the group which should be updated
+            date (string): the new date and time
+
+        Returns:
+        --------
+            None
+        """
+
+        try:
+            self.cur.execute(f'UPDATE {table}_groups SET date=? WHERE id=?', [date, group_id])
+        except mariadb.Error as e:
+            logger.warning(f'Date update error on group {group_id}')

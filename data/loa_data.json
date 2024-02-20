@@ -2,11 +2,12 @@
     "classes": ["Artillerist", "Sorceress", "Artist", "Destroyer", "Berserker", "Gunlancer", "Paladin", "Slayer", "Arcanist", "Bard", "Summoner", "Glaivier", "Scrapper", "Soulfist", "Striker", "Wardancer", "Deadeye", "Gunslinger", "Machinist", "Sharpshooter", "Deathblade", "Reaper", "Shadowhunter", "Souleater", "Aeromancer"],
     "emojis":  ["<:berserker:1171000064865472593>","<:machinist:1171742815814946836>","<:aeromancer:1170998159552557086>","<:arcanist:1171000055830958120>","<:artillerist:1171000058204913675>","<:bard:1171000063540068443>","<:deadeye:1171000067386245141>","<:deathblade:1171000068921364490>","<:destroyer:1171000071819624509>","<:glaivier:1171000073396695050>","<:gunlancer:1171000074839531630>","<:gunslinger:1171000076827643914>","<:paladin:1171000714374414417>","<:reaper:1171000949138014238>","<:scrapper:1171000951461642290>","<:shadowhunter:1171000082976481371>","<:sharpshooter:1171000085002342500>","<:sorceress:1171000954770952223>","<:souleater:1171704841995825172>","<:soulfist:1171000088223547444>","<:striker:1171000091256033310>","<:summoner:1171000958105440336>","<:wardancer:1171000960307449896>","<:slayer:1171000952862548018>","<:artistt:1171000059509350460>"],
     "raids": [
-        {"name": "Valtan", "modes":"1415 Normal, Hard 1445", "member":8, "rtype":"Legion"},
-        {"name": "Vykas", "modes":"1430 Normal, Hard 1460", "member":8, "rtype":"Legion"},
-        {"name": "Clown", "modes":"1475 Normal", "member":4, "rtype":"Legion"},
-        {"name": "Brelshaza", "modes":"Normal (custom), Hard (custom), 1490 G1-2 Normal, 1500 G3 Normal, 1520 G4 Normal, G1-2 1540 Hard, G3 1550 Hard, G4 1560 Hard", "member":8, "rtype":"Legion"},        
+        {"name": "Valtan", "modes":"1415 Normal, Hard 1445, Hellmode, Extreme-NM 1580, Extreme-HM 1620", "member":8, "rtype":"Legion"},
+        {"name": "Vykas", "modes":"1430 Normal, Hard 1460, Hellmode", "member":8, "rtype":"Legion"},
+        {"name": "Clown", "modes":"1475 Normal, Hellmode", "member":4, "rtype":"Legion"},
+        {"name": "Brelshaza", "modes":"Normal (custom), Hard (custom), 1490 G1-2 Normal, 1500 G3 Normal, 1520 G4 Normal, G1-2 1540 Hard, G3 1550 Hard, G4 1560 Hard, Hellmode", "member":8, "rtype":"Legion"},        
         {"name": "Akkan", "modes":"1580 Normal, 1600 Hard", "member":8, "rtype":"Legion"},
+        {"name": "Thaemine", "modes":"1610 Normal, 1630 Hard", "member":8, "rtype":"Legion"},
         {"name": "Argos", "modes":"1370 Normal", "member":8, "rtype":"Abyssal"},
         {"name": "Kayangel", "modes":"1540 Normal, Hard 1580", "member":4, "rtype":"Abyssal"},
         {"name": "Elfenbeinturm", "modes":"1600 Normal, Hard 1620", "member":4, "rtype":"Abyssal"},
@@ -21,7 +22,6 @@
         {"name": "Sonavel", "modes":"1580 Normal", "member":4, "rtype":"Guardian"},
         {"name": "Gargadeth", "modes":"1610 Normal", "member":4, "rtype":"Guardian"},
         {"name":"Custom Group", "modes":"Custom", "member":4, "rtype":"Guardian"}
-        
         
     ]
 }
