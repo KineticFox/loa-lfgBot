@@ -1163,6 +1163,9 @@ def run(bot):
 
         classes_file.close()
 
+        if role == 'DD':
+            role = 'DPS'
+
         table = ''.join(l for l in ctx.guild.name if l.isalnum())
         result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table, u_id, emoji)
         db.close()

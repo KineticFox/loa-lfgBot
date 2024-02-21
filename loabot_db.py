@@ -64,10 +64,6 @@ class LBDB:
           dc_id text DEFAULT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-        CREATE TABLE {images} (
-          raid varchar(40) NOT NULL,
-          url varchar(300) NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
         CREATE TABLE {messages} (
           m_id text NOT NULL,
@@ -78,14 +74,6 @@ class LBDB:
           raid_id int NOT NULL,
           user_id int NOT NULL,
           char_name varchar(70) NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-
-        CREATE TABLE {raids} (
-          name varchar(50) NOT NULL,
-          modes varchar(150) NOT NULL,
-          member int NOT NULL,
-          type varchar(50) NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
