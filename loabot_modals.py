@@ -41,10 +41,9 @@ class CharModal(discord.ui.Modal):
                 await interaction.followup.send(e, delete_after=10, ephemeral=True)
 
         
-        #res = self.db.add_chars(self.children[0].value, self.char, interaction.user.name, int_ilvl, self.role, table, u_id, emoji)
-        #self.db.close()
-        print(int_ilvl)
-        await interaction.followup.send('res', delete_after=10, ephemeral=True)
+        res = self.db.add_chars(self.children[0].value, self.char, interaction.user.name, int_ilvl, self.role, table, u_id, emoji)
+        self.db.close()
+        await interaction.followup.send(res, delete_after=10, ephemeral=True)
 
 
 class DateModal(discord.ui.Modal):
