@@ -18,6 +18,8 @@ import re
 import time
 import requests
 from datetime import datetime
+from loabot_modals import DateModal
+from loabot_views import *
 
 
 logger = logging.getLogger('discord')
@@ -548,30 +550,6 @@ class JoinRaid(discord.ui.View):
         else:
             await interaction.response.send_message('You are not the Raidleader / Du bist nicht der Raidanführer!', ephemeral=True) 
 
-class DateModal(discord.ui.Modal):
-    def __init__(self, title: str,view) -> None:
-        super().__init__(title=title)
-        self.view = view
-        self.add_item(discord.ui.InputText(label='New Date/Neue Zeit'))   
-    
-    
-    async def callback(self, interaction: Interaction):
-        embed = interaction.message.embeds[0]
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
-        date = self.children[0].value
-        embed.set_field_at(0, name='Date/Time:', value=date)
-
-        e_dict = embed.to_dict()
-        fields = e_dict.get('fields')
-
-        db = LBDB()
-        db.use_db()
-
-        db.update_date(guild_name, fields[8].get('value'), date)
-        db.close()
-        await interaction.response.send_message('Datum wurde geändert/Date changed', ephemeral=True)
-        await interaction.message.edit(embed=embed, view=self.view)
-
         
 
 #--------------------- Subclassed view elements -----------------------------------#
@@ -618,385 +596,23 @@ class KickView(discord.ui.View):
         super().__init__(timeout=40, disable_on_timeout=True)
 
         self.add_item(KickDialogue(self.mlist, self.thread))
-    
-class KickDialogue(discord.ui.Select):
-    def __init__(self, mlist, thread) -> None:
-        self.memberlist = mlist
-        self.thread = thread
-        def set_options():
-            list=[]
-            for m in mlist:
-                list.append(discord.SelectOption(label=m.name))
-            return list
-        super().__init__(custom_id='memberlist', placeholder='Choose member', min_values=1, max_values=1, options=set_options(), disabled=False)
-    
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        db = LBDB()
-        db.use_db()
-        embed = interaction.message.embeds[0]
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
 
-        
-        embed_dict = embed.to_dict()
-        fields = embed_dict.get('fields')
-        group_id = fields[8].get('value')
+#KickDialogue
 
-        member_name = self.values[0]
-        user = {}
-        for m in self.memberlist:
-            if m.name == member_name:
-                user = m
-
-        #get char of user
-        char_result = db.raidmember_check(group_id, user.id, guild_name)
-        
-        if char_result is None:
-            db.close()
-            await interaction.followup.send('User is not in thread / Benutzer ist nicht im Raid')
-        else:
-            message = db.get_message(group_id, guild_name)
-            m_id = message['m_id']
-            char = char_result['char_name']
-            #get role of user
-            clean_char_name = char.split(' ')[0]
-            role_result = db.get_charRole(clean_char_name, guild_name)
-            role = role_result['role']
-
-            group_result = db.get_group(group_id, guild_name)
-            mc = group_result['raid_mc']
-
-            ilvl = db.get_char_ilvl(clean_char_name, guild_name)
-            char_ilvl = ilvl['ilvl']
-
-            if role == 'DPS':
-                mc -= 1
-                dps_count = fields[3].get('value')
-                d_count = int(dps_count) - 1
-                db.update_group_mc(group_id, mc, guild_name)
-                #self.dpsvalue.clear()
-                dps_string = fields[6].get('value')
-
-                re_pattern = re.compile(re.escape(char) + '.*?(\n|$)', re.DOTALL)
-                new_dps_string = re.sub(re_pattern, '', dps_string, 1)
-                embed.set_field_at(6, name='DPS', value=new_dps_string)
-                embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                db.remove_groupmember(user.id, group_id, guild_name)
-
-            else:
-                mc -= 1
-                supp_count = fields[4].get('value')
-                s_count = int(supp_count) - 1
-                db.update_group_mc(group_id, mc, guild_name)
-                #self.suppvalue.clear()
-                supp_string = fields[7].get('value')
-                re_pattern = re.compile(re.escape(char) + '.*?(\n|$)', re.DOTALL)
-                new_supp_string = re.sub(re_pattern, '', supp_string, 1)
-
-                embed.set_field_at(7, name='SUPP', value=new_supp_string)
-                embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-
-                db.remove_groupmember(user.id, group_id, guild_name)
-
-            db.close()
-
-            try:
-                await self.thread.remove_user(user)
-                await interaction.followup.send(f'removed user: {user.name}', ephemeral=True)
-                channel = {}
-                if interaction.guild.get_channel(interaction.channel.id) is None:
-                    channel = interaction.guild.fetch_channel(interaction.channel.id)
-                else:
-                    channel = interaction.guild.get_channel(interaction.channel.id)
-                m = await channel.fetch_message(m_id)
-                await m.edit(view=self.view.orgview, embed=embed)
-            except discord.errors as e:
-                logger.warning(f'DC Error in kick callback - {e}')
-                await interaction.followup.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True)
 
     
 
 
+#Charselect
 
-class CharSelect(discord.ui.Select):
-    def __init__(self, optionlist, db, parent) -> None:
-        self.olist = optionlist
-        self.db = db
-        self.parentview = parent
-        def set_options():
-            list=[]
-            for char in optionlist:
-                charname = char.split(' ')[0]
-                list.append(discord.SelectOption(label=charname))
-            return list
-    
-        super().__init__(custom_id='character_selection', placeholder='Choose your Character', min_values=1, max_values=1, options=set_options(), disabled=False)
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        selectedChar = self.values[0]
-        self.placeholder = self.values[0]
-
-        charname = ""
-        #capital_charname = charname.capitalize()
-
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
-
-        for char in self.olist:
-            if char.split(' ')[0] == selectedChar:
-                charname = char
-        #get selected char from db for role
-        role = self.db.get_charRole(selectedChar, guild_name)
-        #get raid id, user id
-
-        #check if user is already connected to this raid id --> raidmember table
-        check = self.db.raidmember_check(self.view.g_id, self.view.user_id, guild_name)
-
-        #disable select menu to prevent unintended char switching
-        self.disabled = True
-        channel = {}
-        if interaction.guild.get_channel(interaction.channel.id) is None:
-            channel = await interaction.guild.fetch_channel(interaction.channel.id)
-        else:
-            channel = interaction.guild.get_channel(interaction.channel.id)
-        
-        #get message id
-        message = self.db.get_message(self.view.g_id, guild_name)
-        m_id = message['m_id']
-        
-        m = await channel.fetch_message(m_id)
-
-         #get mc from raid
-        res = self.db.get_group(self.view.g_id, guild_name)
-        mc = res['raid_mc']
-
-        #get message id
-        
-
-        #get char ilvl
-        ilvl = self.db.get_char_ilvl(selectedChar, guild_name)
-        char_ilvl = ilvl['ilvl']
-
-
-        e_dict = self.view.orgview.embed.to_dict()
-        e_fields = e_dict.get('fields')
-
-        if(check is None):
-            self.db.add_groupmember(self.view.g_id, self.view.user_id, charname, guild_name)    
-              
-
-            if(role['role'] == 'DPS'):
-                #update mc update_group_mc
-                mc += 1
-                dps_count = e_fields[3].get('value')
-                d_count = int(dps_count) + 1
-                #self.view.orgview.dpsvalue.append(f'{selectedChar} - {interaction.user.name}\n')
-                self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                dps_string = e_fields[6].get('value')
-                new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
-                self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
-                
-            else:
-                mc += 1
-                supp_count = e_fields[4].get('value')
-                s_count = int(supp_count) + 1
-                self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-                supp_string = e_fields[7].get('value')
-                new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
-                self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
-
-            #self.view.orgview.user_chars.clear() #clear list
-            self.db.close()
-            try:
-                await self.view.thread.add_user(interaction.user)            
-                
-                self.parentview.children[0].disabled = False
-                await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-                await interaction.delete_original_response()
-                self.disabled = True
-                #m2 = await interaction.original_response()
-                #await m2.edit(view=self.view)
-                #await interaction.followup.send('Add you to the group / Du wurdest der Gruppe hinzugefügt', ephemeral=True)
-                self.parentview.active = True
-                self.view.stop()
-            except discord.errors as e:
-                #m = await interaction.original_response()
-                logger.warning(f'DC Error in charSelect callback - {e}')
-                await interaction.followup.send('Something went wrong, try again or seek for help / Etwas ist schiefgelaufen, probiere es nochmal oder frag nach Hilfe', ephemeral=True) 
-                self.parentview.children[0].disabled = False
-                await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-                self.view.stop()
-        else:
-           
-            old_char = self.view.old_char.split(' ')[0]
-            old_role = self.db.get_charRole(old_char, guild_name)
-
-            new_embed = {}
-
-            if old_role['role'] == 'DPS':
-                mc -= 1
-                dps_count = e_fields[3].get('value')
-                d_count = int(dps_count) - 1
-                self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                dps_string = e_fields[6].get('value')
-                re_pattern = re.compile(re.escape(old_char) + '.*?(\n|$)', re.DOTALL)
-                new_dps_string = re.sub(re_pattern, '', dps_string, 1)
-                self.view.orgview.embed.set_field_at(6, name='DPS', value=new_dps_string)
-                self.view.orgview.embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                self.db.remove_groupmember(self.view.user_id, self.view.g_id, guild_name)
-                message = await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-                #print('edit old dps mess') --> maybe replace with log.debug
-                new_embed = message.embeds[0]
-                new_e_dict = new_embed.to_dict()
-                new_fields = new_e_dict.get('fields')
-
-                if(role['role'] == 'DPS'):                    
-                    mc += 1
-                    dps_count = new_fields[3].get('value')
-                    d_count = int(dps_count) + 1
-                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                    new_embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                    dps_string = new_fields[6].get('value')
-                    new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
-                    new_embed.set_field_at(6, name='DPS', value=new_dps_string)
-                    
-                else:
-                    #print('switched from dps to supp') --> maybe replace with log.debug
-                    mc += 1
-                    supp_count = new_fields[4].get('value')
-                    s_count = int(supp_count) + 1
-                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                    new_embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-                    supp_string = new_fields[7].get('value')
-                    new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
-                    new_embed.set_field_at(7, name='SUPP', value=new_supp_string)
-
-            else:
-                mc -= 1
-                supp_count = e_fields[4].get('value')
-                s_count = int(supp_count) - 1
-                self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                supp_string = e_fields[7].get('value')
-                re_pattern = re.compile(re.escape(old_char) + '.*?(\n|$)', re.DOTALL)
-                new_supp_string = re.sub(re_pattern, '', supp_string, 1)
-
-                self.view.orgview.embed.set_field_at(7, name='SUPP', value=new_supp_string)
-                self.view.orgview.embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-                self.db.remove_groupmember(self.view.user_id, self.view.g_id, guild_name)
-                message = await m.edit(view=self.view.orgview, embed=self.view.orgview.embed)
-                #print('edit old supp mess') --> maybe replace with log.debug
-                new_embed = message.embeds[0]
-                new_e_dict = new_embed.to_dict()
-                new_fields = new_e_dict.get('fields')
-
-                
-                if(role['role'] == 'DPS'):
-                    #print('switched to new dps') --> maybe replace with log.debug
-                    mc += 1
-                    dps_count = new_fields[3].get('value')
-                    d_count = int(dps_count) + 1
-                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                    new_embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                    dps_string = new_fields[6].get('value')
-                    new_dps_string = dps_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
-                    new_embed.set_field_at(6, name='DPS', value=new_dps_string)
-                    
-                else:
-                    mc += 1
-                    supp_count = new_fields[4].get('value')
-                    s_count = int(supp_count) + 1
-                    self.db.update_group_mc(self.view.g_id, mc, guild_name)
-                    new_embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-                    supp_string = new_fields[7].get('value')
-                    new_supp_string = supp_string + f'\n{charname} ({char_ilvl}) - {interaction.user.name}\n'
-                    new_embed.set_field_at(7, name='SUPP', value=new_supp_string)              
-              
             
-            self.db.add_groupmember(self.view.g_id, self.view.user_id, charname, guild_name)
-            
-            self.parentview.children[0].disabled = False
-            await m.edit(view=self.view.orgview, embed=new_embed)
-            await interaction.delete_original_response()
-            self.disabled = True
-            self.db.close()
-            self.view.stop()
-            
-
-class RaidType(discord.ui.Select):
-    def __init__(self, parentview) -> None:
-        self.parentview = parentview
-        def set_options():
-            types = ['Legion', 'Abyssal', 'Guardian']
-            list = []
-            for t in types:
-                list.append(discord.SelectOption(label=t))
-            return list
-        super().__init__(custom_id='raid_type', placeholder='Choose a Raid Type', min_values=1, max_values=1, options=set_options(), disabled=False)
-
-    async def callback(self, interaction: discord.Interaction):
-        r_type = self.values[0]
-        self.placeholder = self.values[0]
-        self.parentview.add_item(RaidSelect(parentview=self.parentview, raid_type=r_type))
-        self.disabled = True
-        try:
-            await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
-        except discord.errors as e:
-            logger.warning(f'DC Error in raidType callback - {e}')
-            await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True) 
+#RaidType
 
 
-class RaidSelect(discord.ui.Select):
-    def __init__(self, parentview, raid_type) -> None:
-        self.parentview = parentview
-        self.raid_type= raid_type
-        def set_options():
-            list = []
-            #print('legin creation ',self.parentview.raids['Valtan'])
+#RaidSelect
 
-            for key, value in self.parentview.raids.items():
-                if value.get('type') == self.raid_type:
-                    list.append(discord.SelectOption(label=key, description=value.get('type')))
-            return list
+#RaidModeSelect
 
-        super().__init__(custom_id='raid_selection', placeholder='Choose a Raid', min_values=1, max_values=1, options=set_options(), disabled=False)
-    
-    async def callback(self, interaction: discord.Interaction):
-        self.parentview.embed.add_field(name=f'Raid: ', value=self.values[0], inline=True)
-        self.placeholder = self.values[0]
-        self.parentview.selectedRaid = self.parentview.raids[self.values[0]]
-        self.disabled = True
-        self.parentview.add_item(RaidModeSelect(parentview=self.parentview, mode=self.parentview.raids[self.values[0]]))
-        try:
-            await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
-        except discord.errors as e:
-            logger.warning(f'DC Error in raidSelect callback - {e}')
-            await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True)
-
-class RaidModeSelect(discord.ui.Select):
-    def __init__(self, parentview, mode) -> None:
-        self.parentview = parentview
-        self.mode = mode
-        def set_options():
-            list = []
-            list.append(discord.SelectOption(label='Static', description='For static groups'))
-            for m in self.mode.get('modes'):
-                list.append(discord.SelectOption(label=m))
-            return list
-        
-        super().__init__(custom_id='raid_mode', placeholder='Choose the mode of the raid', min_values=1, max_values=1, options=set_options(), disabled=False)
-    
-    async def callback(self, interaction: discord.Interaction):
-        self.parentview.embed.add_field(name=f'Raid Mode: ', value=self.values[0], inline=True)
-        self.placeholder = self.values[0]
-        createButton  = self.parentview.get_item('create')
-        createButton.disabled = False
-        self.disabled = True
-        try:
-            await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
-        except discord.errors as e:
-            await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True)
 
 
 
@@ -1121,7 +737,7 @@ def run(bot):
         await ctx.respond(f"hello {ctx.user}")
 
     @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title / Erstellt eine lfg-Party, keine emojis erlaubt.")
-    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'Date + time or short text', required=True, max_length=40)):
+    async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'Date + time or short text', required=True, max_length=40)): # type: ignore
         time = date
         #await ctx.defer(ephemeral=True)
         db = LBDB()
@@ -1139,37 +755,40 @@ def run(bot):
         await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
 
     
-    @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
-    async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DD', 'SUPP'])):
-        await ctx.defer(ephemeral=True)
-        db = LBDB()
-        db.use_db()
-        member = ctx.guild.get_member_named(ctx.author.name)
-        u_id = member.id
+    # @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
+    # async def db_addchars(ctx, char: discord.Option(str, 'Charname', required=True, max_length=69), cl: discord.Option(str, 'Class', required=True, choices=load_classes()), ilvl: discord.Option(int, 'item level', required=True), role: discord.Option(str, 'Role', required=True, choices=['DD', 'SUPP'])): # type: ignore
+    #     await ctx.defer(ephemeral=True)
+    #     db = LBDB()
+    #     db.use_db()
+    #     member = ctx.guild.get_member_named(ctx.author.name)
+    #     u_id = member.id
         
-        classes_file = open('data/loa_data.json')
-        data = json.load(classes_file)
+    #     classes_file = open('data/loa_data.json')
+    #     data = json.load(classes_file)
         
-        emoji = ''
+    #     emoji = ''
 
-        for i in data['emojis']:
-            res = re.search('<:(.*):',i)
-            e = res.group(1)
-            if cl.lower() == e:
-                emoji = i
-            elif e == 'artistt' and cl.lower() == 'artist':
-                emoji = i
+    #     for i in data['emojis']:
+    #         res = re.search('<:(.*):',i)
+    #         e = res.group(1)
+    #         if cl.lower() == e:
+    #             emoji = i
+    #         elif e == 'artistt' and cl.lower() == 'artist':
+    #             emoji = i
 
 
-        classes_file.close()
+    #     classes_file.close()
 
-        table = ''.join(l for l in ctx.guild.name if l.isalnum())
-        result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table, u_id, emoji)
-        db.close()
-        await ctx.respond(result, ephemeral=True, delete_after=20)
+    #     if role == 'DD':
+    #         role = 'DPS'
+
+    #     table = ''.join(l for l in ctx.guild.name if l.isalnum())
+    #     result = db.add_chars(char, cl, ctx.author.name, ilvl, role, table, u_id, emoji)
+    #     db.close()
+    #     await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="update_char", description="Updates the i-lvl of given char or deletes it / Ändert das i-lvl des Charakters oder löscht ihn")
-    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True, max_length=69), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')):
+    async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True, max_length=69), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')): # type: ignore
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         await ctx.defer(ephemeral=True)
         
@@ -1280,7 +899,7 @@ def run(bot):
         db.close()
     
     @bot.slash_command(name="upload_image", description="Upload specific raid image")
-    async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)):
+    async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)): # type: ignore
         file = discord.File(f'ressources/{name}.png', filename=f'{name}.png')
         db = LBDB()
         db.use_db()
@@ -1290,7 +909,7 @@ def run(bot):
         db.close()
 
     @bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
-    async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)):
+    async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)): # type: ignore
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
         db.use_db()
@@ -1310,7 +929,7 @@ def run(bot):
     
     
     @bot.slash_command(name="clear")
-    async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)):
+    async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)): # type: ignore
         await ctx.defer(ephemeral=True)
         if amount:
             await ctx.channel.purge(limit=amount, bulk=False)
@@ -1321,7 +940,7 @@ def run(bot):
             await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
     
     @bot.slash_command(name="sql")
-    async def run_command(ctx, command:discord.Option(str, 'command', required=True)):
+    async def run_command(ctx, command:discord.Option(str, 'command', required=True)): # type: ignore
         if ctx.author.name == 'mr.xilef':
             db = LBDB()
             db.use_db()
@@ -1356,7 +975,7 @@ def run(bot):
 
     @bot.slash_command(name="animal_bomb", description='Displays a random cat or dog image. 20sec command cooldown and images are deleted after 10 min')
     @commands.cooldown(1,20, commands.BucketType.user)
-    async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog'], required=True)):
+    async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog'], required=True)): # type: ignore
         await ctx.defer()
 
         if animal == 'cat':
@@ -1376,6 +995,7 @@ def run(bot):
         if isinstance(error, commands.CommandOnCooldown):
             await ctx.respond(error, ephemeral=True)
         else:
+            logger.warning(f'An error occured: {error}')
             raise error
 
     @bot.slash_command(name="my_raids")
@@ -1497,6 +1117,12 @@ def run(bot):
         result = db.add_admin(u_id)
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
+    
+    @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
+    async def test_modal(ctx):
+        #modal = CharModal(title='test')
+        await ctx.defer(ephemeral=True)
+        await ctx.followup.send('Register your char',view=RegisterChar(), delete_after=120, ephemeral=True)
 
 
     """  @bot.slash_command(name='user_maintenance')
