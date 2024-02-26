@@ -742,3 +742,62 @@ class LBDB:
             self.cur.execute(f'UPDATE {table}_groups SET date=? WHERE id=?', [date, group_id])
         except mariadb.Error as e:
             logger.warning(f'Date update error on group {group_id}')
+
+    def get_all_char_classes(self) -> 'list[dict]':
+        """
+        gets all Charakter classes in the DB
+
+        Returns:
+        --------
+            list[dict]
+        """
+
+        try:
+            self.cur.execute(f'SELECT * FROM lostArk_char_class')
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'Get all classes error - {e}')
+
+    def get_all_chars(self, charclass: str) -> 'list[dict]':
+        """
+            Gets all Chars belonging to selected Char Class.
+
+            Parameters:
+            -----------
+                charclass (string): The Characterclass name
+            
+            Returns:
+            --------
+                list[dicts]: the resulting Chars with emojis
+
+        """
+
+        try:
+            self.cur.execute(f'SELECT * FROM lostArk_chars WHERE char_class=(SELECT id FROM lostArk_char_class WHERE class_name=?)', [charclass])
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'Get all classes error - {e}')
+
+    def get_char_data(self, char: str) -> 'list[dict]':
+        """
+            Gets Charname and Char emoji from spcified Charclass
+
+            Parameters:
+            -----------
+                char (string): The char you want to get the emoji for
+
+            Returns:
+            --------
+                dict: The dict with the char emoji
+
+        """
+
+        try:
+            self.cur.execute(f'SELECT * FROM lostArk_chars WHERE char_name=?', [char])
+            res = self.cur.fetchone()
+            return res
+        
+        except mariadb.Error as e:
+            logger.warning(f'Get char emoji error - {e}')
