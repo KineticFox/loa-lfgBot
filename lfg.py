@@ -612,6 +612,18 @@ class KickView(discord.ui.View):
 #RaidSelect
 
 #RaidModeSelect
+        
+class RemoteAddView(discord.ui.View):
+    def __init__(self, user, table, channel, raid, chars, db):
+        self.user = user
+        self.table = table
+        self.channel = channel
+        self.raid_id = raid
+        self.optionlist = chars
+        self.db = db
+
+        super().__init__(timeout=180, disable_on_timeout=True)
+        self.add_item(RemoteCharSelect(self.optionlist, self.db, self.user, self.table, self.raid_id, self.channel))
 
 
 
@@ -1123,6 +1135,25 @@ def run(bot):
         #modal = CharModal(title='test')
         await ctx.defer(ephemeral=True)
         await ctx.followup.send('Register your char',view=RegisterChar(), delete_after=120, ephemeral=True)
+
+    @bot.slash_command(name="add_raidmember", description="Adds a given DC user with his chars to a raid")
+    async def add_raidmember(ctx, user: discord.Member, channel: discord.TextChannel, raid: int):
+        await ctx.defer(ephemeral=True)
+        db = LBDB()
+        db.use_db()
+
+        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+
+        group = db.get_group(raid, tablename)
+
+        chars = db.get_chars(user.id, tablename)
+
+        msg_id = group.get('dc_id')
+
+        msg = await channel.fetch_message(msg_id)#discord.utils.get(await channel)
+
+
+        await ctx.followup.send('Add the chars of the user', view=RemoteAddView(user, tablename, channel, raid, chars, db))
 
 
     """  @bot.slash_command(name='user_maintenance')

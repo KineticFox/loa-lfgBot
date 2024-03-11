@@ -451,3 +451,106 @@ class RaidModeSelect(discord.ui.Select):
             await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
         except discord.errors as e:
             await interaction.response.send_message('Something went wrong / Etwas ist schiefgelaufen', ephemeral=True)
+
+
+class RemoteCharSelect(discord.ui.Select):
+    def __init__(self, optionlist, db, user, table, raid_id, channel) -> None:
+        self.olist = optionlist
+        self.db = db
+        self.user = user
+        self.table = table
+        self.channel = channel
+        self.raid_id = raid_id
+
+        def set_options():
+            list=[]
+            for char in optionlist:
+                #charname = char.split(' ')[0]
+                list.append(discord.SelectOption(label=char.get('char_name')))
+            return list
+    
+        super().__init__(custom_id='character_selection', placeholder='Choose the Character', min_values=1, max_values=1, options=set_options(), disabled=False)
+
+    async def callback(self, interaction: discord.Interaction):
+
+        #TODO: add owner or mod check
+        await interaction.response.defer()
+        selectedChar = self.values[0]
+        self.placeholder = self.values[0]
+
+        group = self.db.get_group(self.raid_id, self.table)
+        msg_id = group.get('dc_id')
+
+        msg = await self.channel.fetch_message(msg_id)
+
+        m_view = discord.ui.View.from_message(msg)
+
+        thread = await interaction.guild.fetch_channel(msg_id)
+
+        charname = {}
+        #capital_charname = charname.capitalize()
+
+        
+        for char in self.olist:
+            if char.get('char_name') == selectedChar:
+                charname = char
+        #get selected char from db for role
+                
+        role_res = self.db.get_charRole(charname.get('char_name'), self.table)
+        role = role_res.get('role')
+        #get raid id, user id
+
+        print(role)
+
+        group_id = group.get('id')
+        #check if user is already connected to this raid id --> raidmember table
+        check = self.db.raidmember_check(group_id, self.user.id, self.table)
+
+        #disable select menu to prevent unintended char switching
+        self.disabled = True        
+
+        #get mc from raid
+        mc = group.get('raid_mc')
+
+        #get message id
+
+
+        #get char ilvl
+        ilvl = charname.get('ilvl')
+
+        embed = msg.embeds[0]
+
+        e_dict = embed.to_dict()
+        e_fields = e_dict.get('fields')
+
+        if(check is None):
+            self.db.add_groupmember(group_id, self.user.id, charname.get('char_name'), self.table)    
+              
+
+            if(role == 'DPS'):
+                #update mc update_group_mc
+                mc += 1
+                dps_count = e_fields[3].get('value')
+                d_count = int(dps_count) + 1
+                self.db.update_group_mc(group_id, mc, self.table)
+                embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                dps_string = e_fields[6].get('value')
+                new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                embed.set_field_at(6, name='DPS', value=new_dps_string)                
+            else:
+                mc += 1
+                supp_count = e_fields[4].get('value')
+                s_count = int(supp_count) + 1
+                self.db.update_group_mc(group_id, mc, self.table)
+                embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+                supp_string = e_fields[7].get('value')
+                new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                embed.set_field_at(7, name='SUPP', value=new_supp_string)
+
+            self.db.close()
+            #try:
+            await thread.add_user(self.user)            
+              
+            await msg.edit( embed=embed)#view=m_view,
+
+           
