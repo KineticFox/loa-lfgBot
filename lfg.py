@@ -22,6 +22,7 @@ from loabot_modals import DateModal
 from loabot_views import *
 
 
+
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -713,6 +714,9 @@ def run(bot):
             welcome = bot.get_cog('MemberManagement')
             await welcome.setupGuild()
         
+        await bot.register_commands()
+        #await bot.sync_commands()
+        
         await ctx.send(f'loaded {cog} cog', delete_after=10)
     
     @bot.command()
@@ -723,6 +727,7 @@ def run(bot):
             welcome = bot.get_cog('WelcomeSetup')
             await welcome.setupGuild()
         
+        #await bot.sync_commands()
         await ctx.send(f'reloaded {cog} cog', delete_after=10)
 
     
@@ -745,10 +750,12 @@ def run(bot):
 
     
     @bot.slash_command(name = "hi", description = "say hi")
+    @discord.guild_only()
     async def hello(ctx):
         await ctx.respond(f"hello {ctx.user}")
 
     @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title / Erstellt eine lfg-Party, keine emojis erlaubt.")
+    @discord.guild_only()
     async def create_raid(ctx, title: discord.Option(str, 'Choose a title', max_length=70), date: discord.Option(str, 'Date + time or short text', required=True, max_length=40)): # type: ignore
         time = date
         #await ctx.defer(ephemeral=True)
@@ -800,6 +807,7 @@ def run(bot):
     #     await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="update_char", description="Updates the i-lvl of given char or deletes it / Ändert das i-lvl des Charakters oder löscht ihn")
+    @discord.guild_only()
     async def db_updatechars(ctx, charname: discord.Option(str, 'Charname', required=True, max_length=69), ilvl: discord.Option(int, 'ilvl', required=True), delete: discord.Option(str, 'delete', required=False, choices=['yes','no'], default='no')): # type: ignore
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         await ctx.defer(ephemeral=True)
@@ -812,6 +820,7 @@ def run(bot):
         await ctx.send_followup(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="show_chars", description="Shows all chars of the user / Zeigt alle Charaktere des Spielers an")
+    @discord.guild_only()
     async def db_getchars(ctx, user: discord.Member = None):
         await ctx.defer(ephemeral=True)
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -868,6 +877,7 @@ def run(bot):
             await ctx.followup.send(f'Characters - {ctx.author.name}', embed=panel, ephemeral=True)
 
     @bot.slash_command(name="update_raids", description="Updates Raids")
+    @discord.guild_only()
     async def db_updateraids(ctx):
         await ctx.defer()
         db = LBDB()
@@ -911,6 +921,7 @@ def run(bot):
         db.close()
     
     @bot.slash_command(name="upload_image", description="Upload specific raid image")
+    @discord.guild_only()
     async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)): # type: ignore
         file = discord.File(f'ressources/{name}.png', filename=f'{name}.png')
         db = LBDB()
@@ -921,6 +932,7 @@ def run(bot):
         db.close()
 
     @bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
+    @discord.guild_only()
     async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)): # type: ignore
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
@@ -941,6 +953,7 @@ def run(bot):
     
     
     @bot.slash_command(name="clear")
+    @discord.guild_only()
     async def clear_messages(ctx, amount:discord.Option(int, 'amount', required=False)): # type: ignore
         await ctx.defer(ephemeral=True)
         if amount:
@@ -952,6 +965,7 @@ def run(bot):
             await ctx.respond(f'deleted 4 messages', ephemeral=True, delete_after=10)
     
     @bot.slash_command(name="sql")
+    @discord.guild_only()
     async def run_command(ctx, command:discord.Option(str, 'command', required=True)): # type: ignore
         if ctx.author.name == 'mr.xilef':
             db = LBDB()
@@ -986,6 +1000,7 @@ def run(bot):
         await ctx.respond('Help section', embed=embed, ephemeral=True, delete_after=120)
 
     @bot.slash_command(name="animal_bomb", description='Displays a random cat or dog image. 20sec command cooldown and images are deleted after 10 min')
+    @discord.guild_only()
     @commands.cooldown(1,20, commands.BucketType.user)
     async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog'], required=True)): # type: ignore
         await ctx.defer()
@@ -1011,6 +1026,7 @@ def run(bot):
             raise error
 
     @bot.slash_command(name="my_raids")
+    @discord.guild_only()
     async def my_raids(ctx):
         await ctx.defer(ephemeral=True)
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -1050,6 +1066,7 @@ def run(bot):
         await ctx.followup.send(f'Your active Groups / Deine aktiven Gruppen ', embed=panel, ephemeral=True)
     
     @bot.slash_command(name='raid_overview')
+    @discord.guild_only()
     async def raids_overview(ctx):
         await ctx.defer()
         db = LBDB()
@@ -1119,6 +1136,7 @@ def run(bot):
 
 
     @bot.slash_command(name="add_dcadmin", description="Adds a user to the admin table ")
+    @discord.guild_only()
     async def db_addadmin(ctx, user: discord.Member ):
         await ctx.defer(ephemeral=True)
         db = LBDB()
@@ -1131,12 +1149,14 @@ def run(bot):
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
+    @discord.guild_only()
     async def test_modal(ctx):
         #modal = CharModal(title='test')
         await ctx.defer(ephemeral=True)
         await ctx.followup.send('Register your char',view=RegisterChar(), delete_after=120, ephemeral=True)
 
     @bot.slash_command(name="add_raidmember", description="Adds a given DC user with his chars to a raid")
+    @discord.guild_only()
     async def add_raidmember(ctx, user: discord.Member, channel: discord.TextChannel, raid: int):
         await ctx.defer(ephemeral=True)
         db = LBDB()
@@ -1154,6 +1174,7 @@ def run(bot):
 
 
         await ctx.followup.send('Add the chars of the user', view=RemoteAddView(user, tablename, channel, raid, chars, db))
+
 
 
     """  @bot.slash_command(name='user_maintenance')
