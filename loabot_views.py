@@ -473,7 +473,6 @@ class RemoteCharSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
 
-
         await interaction.response.defer()
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
