@@ -521,72 +521,89 @@ class RemoteCharSelect(discord.ui.Select):
         e_fields = e_dict.get('fields')
 
         admin_role_id = 1006783350188560416
+        erklearbear_role_id = 1117824013931122758
         author = embed.author.name
 
-        if interaction.user.name == author:
-            if(check is None):
-                self.db.add_groupmember(group_id, self.user.id, charname.get('char_name'), self.table)    
-                
+        raid = e_fields[1].get('value')
+        raidname = raid.split(' -')[0]
 
-                if(role == 'DPS'):
-                    #update mc update_group_mc
-                    mc += 1
-                    dps_count = e_fields[3].get('value')
-                    d_count = int(dps_count) + 1
-                    self.db.update_group_mc(group_id, mc, self.table)
-                    embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                    dps_string = e_fields[6].get('value')
-                    new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
-                    embed.set_field_at(6, name='DPS', value=new_dps_string)                
-                else:
-                    mc += 1
-                    supp_count = e_fields[4].get('value')
-                    s_count = int(supp_count) + 1
-                    self.db.update_group_mc(group_id, mc, self.table)
-                    embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-                    supp_string = e_fields[7].get('value')
-                    new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
-                    embed.set_field_at(7, name='SUPP', value=new_supp_string)
+        res = self.db.get_raid_mc(raidname)
+        mc = res['member']
 
-                self.db.close()
-                #try:
-                await thread.add_user(self.user)            
-                
-                await msg.edit( embed=embed)#view=m_view,
-            
-        elif interaction.user.get_role(admin_role_id):            
+        g_res= self.db.get_group(group_id, self.table)
+        g_mc = g_res['raid_mc']
 
-            if(check is None):
-                self.db.add_groupmember(group_id, self.user.id, charname.get('char_name'), self.table)    
-                
-
-                if(role == 'DPS'):
-                    #update mc update_group_mc
-                    mc += 1
-                    dps_count = e_fields[3].get('value')
-                    d_count = int(dps_count) + 1
-                    self.db.update_group_mc(group_id, mc, self.table)
-                    embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
-                    dps_string = e_fields[6].get('value')
-                    new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
-                    embed.set_field_at(6, name='DPS', value=new_dps_string)                
-                else:
-                    mc += 1
-                    supp_count = e_fields[4].get('value')
-                    s_count = int(supp_count) + 1
-                    self.db.update_group_mc(group_id, mc, self.table)
-                    embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
-                    supp_string = e_fields[7].get('value')
-                    new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
-                    embed.set_field_at(7, name='SUPP', value=new_supp_string)
-
-                self.db.close()
-                #try:
-                await thread.add_user(self.user)            
-                
-                await msg.edit( embed=embed)#view=m_view,
+        if g_mc >= mc:
+            self.db.close()
+            await interaction.followup.send('Raid has max membercount', ephemeral=True)
         
         else:
-            interaction.followup.send('You are not a Mod or owner of this group', ephemeral=True)
+
+            if interaction.user.name == author:
+                if(check is None):
+                    self.db.add_groupmember(group_id, self.user.id, charname.get('char_name'), self.table)    
+                    
+
+                    if(role == 'DPS'):
+                        #update mc update_group_mc
+                        mc += 1
+                        dps_count = e_fields[3].get('value')
+                        d_count = int(dps_count) + 1
+                        self.db.update_group_mc(group_id, mc, self.table)
+                        embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                        dps_string = e_fields[6].get('value')
+                        new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                        embed.set_field_at(6, name='DPS', value=new_dps_string)                
+                    else:
+                        mc += 1
+                        supp_count = e_fields[4].get('value')
+                        s_count = int(supp_count) + 1
+                        self.db.update_group_mc(group_id, mc, self.table)
+                        embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+                        supp_string = e_fields[7].get('value')
+                        new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                        embed.set_field_at(7, name='SUPP', value=new_supp_string)
+
+                    self.db.close()
+                    #try:
+                    await thread.add_user(self.user)            
+                    
+                    await msg.edit( embed=embed)#view=m_view,
+                
+            elif interaction.user.get_role(erklearbear_role_id) or interaction.user.get_role(admin_role_id):            
+
+                if(check is None):
+                    self.db.add_groupmember(group_id, self.user.id, charname.get('char_name'), self.table)    
+                    
+
+                    if(role == 'DPS'):
+                        #update mc update_group_mc
+                        mc += 1
+                        dps_count = e_fields[3].get('value')
+                        d_count = int(dps_count) + 1
+                        self.db.update_group_mc(group_id, mc, self.table)
+                        embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
+                        dps_string = e_fields[6].get('value')
+                        new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                        embed.set_field_at(6, name='DPS', value=new_dps_string)                
+                    else:
+                        mc += 1
+                        supp_count = e_fields[4].get('value')
+                        s_count = int(supp_count) + 1
+                        self.db.update_group_mc(group_id, mc, self.table)
+                        embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
+                        supp_string = e_fields[7].get('value')
+                        new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                        embed.set_field_at(7, name='SUPP', value=new_supp_string)
+
+                    self.db.close()
+                    
+                    await thread.add_user(self.user)            
+                    
+                    await msg.edit( embed=embed)#view=m_view,
+            
+            else:
+                self.db.close()
+                await interaction.followup.send('You are not a Mod or owner of this group', ephemeral=True)
 
            
