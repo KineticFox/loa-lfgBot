@@ -507,7 +507,7 @@ class RemoteCharSelect(discord.ui.Select):
         self.disabled = True        
 
         #get mc from raid
-        mc = group.get('raid_mc')
+        g_mc = group.get('raid_mc')
 
         #get message id
 
@@ -530,8 +530,8 @@ class RemoteCharSelect(discord.ui.Select):
         res = self.db.get_raid_mc(raidname)
         mc = res['member']
 
-        g_res= self.db.get_group(group_id, self.table)
-        g_mc = g_res['raid_mc']
+        #g_res= self.db.get_group(group_id, self.table)
+        #g_mc = g_res['raid_mc']
 
         if g_mc >= mc:
             self.db.close()
@@ -546,19 +546,19 @@ class RemoteCharSelect(discord.ui.Select):
 
                     if(role == 'DPS'):
                         #update mc update_group_mc
-                        mc += 1
+                        g_mc += 1
                         dps_count = e_fields[3].get('value')
                         d_count = int(dps_count) + 1
-                        self.db.update_group_mc(group_id, mc, self.table)
+                        self.db.update_group_mc(group_id, g_mc, self.table)
                         embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                         dps_string = e_fields[6].get('value')
                         new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
                         embed.set_field_at(6, name='DPS', value=new_dps_string)                
                     else:
-                        mc += 1
+                        g_mc += 1
                         supp_count = e_fields[4].get('value')
                         s_count = int(supp_count) + 1
-                        self.db.update_group_mc(group_id, mc, self.table)
+                        self.db.update_group_mc(group_id, g_mc, self.table)
                         embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                         supp_string = e_fields[7].get('value')
                         new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
@@ -578,19 +578,19 @@ class RemoteCharSelect(discord.ui.Select):
 
                     if(role == 'DPS'):
                         #update mc update_group_mc
-                        mc += 1
+                        g_mc += 1
                         dps_count = e_fields[3].get('value')
                         d_count = int(dps_count) + 1
-                        self.db.update_group_mc(group_id, mc, self.table)
+                        self.db.update_group_mc(group_id, g_mc, self.table)
                         embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                         dps_string = e_fields[6].get('value')
                         new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
                         embed.set_field_at(6, name='DPS', value=new_dps_string)                
                     else:
-                        mc += 1
+                        g_mc += 1
                         supp_count = e_fields[4].get('value')
                         s_count = int(supp_count) + 1
-                        self.db.update_group_mc(group_id, mc, self.table)
+                        self.db.update_group_mc(group_id, g_mc, self.table)
                         embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                         supp_string = e_fields[7].get('value')
                         new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'

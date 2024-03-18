@@ -1034,8 +1034,8 @@ def run(bot):
             img = result.get('url')
         elif animal == 'fox':
             
-            c_random = random.randint(1,123)       
-            
+            c_random = random.randint(1,123) 
+            res = requests.get(f'https://randomfox.ca/images/{c_random}.jpg')                  
             img = f'https://randomfox.ca/images/{c_random}.jpg'
 
 
