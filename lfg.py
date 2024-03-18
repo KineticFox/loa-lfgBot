@@ -709,27 +709,41 @@ def run(bot):
 
     @bot.command()
     async def load_cog(ctx, cog):
-        bot.load_extension(f'cogs.{cog}')
+        if ctx.author.id == 469479291147517952:
+            bot.load_extension(f'cogs.{cog}')
 
-        if  cog == 'orga':
-            welcome = bot.get_cog('MemberManagement')
-            await welcome.setupGuild()
-        
-        await bot.register_commands()
-        #await bot.sync_commands()
-        
-        await ctx.send(f'loaded {cog} cog', delete_after=10)
+            if  cog == 'orga':
+                welcome = bot.get_cog('MemberManagement')
+                await welcome.setupGuild()
+            
+            await bot.register_commands()
+            #await bot.sync_commands()
+            
+            await ctx.send(f'loaded {cog} cog', delete_after=10)
+        else:
+            await ctx.send(f'Hey {ctx.author.mention} you are not allowed to use tihs copmmand.')
     
     @bot.command()
     async def reload_cog(ctx, cog):
-        bot.reload_extension(f'cogs.{cog}')
+        if ctx.author.id == 469479291147517952:
 
-        if  cog == 'orga':
-            welcome = bot.get_cog('WelcomeSetup')
-            await welcome.setupGuild()
-        
-        #await bot.sync_commands()
-        await ctx.send(f'reloaded {cog} cog', delete_after=10)
+            bot.reload_extension(f'cogs.{cog}')
+
+            if  cog == 'orga':
+                welcome = bot.get_cog('WelcomeSetup')
+                await welcome.setupGuild()
+            
+            #await bot.sync_commands()
+            await ctx.send(f'reloaded {cog} cog', delete_after=10)
+        else:
+            await ctx.send(f'Hey {ctx.author.mention} you are not allowed to use tihs copmmand.')
+    
+    @bot.command()
+    async def unload_cog(ctx, cog):
+        if ctx.author.id == 469479291147517952:
+            await ctx.send(f'unloaded {cog} cog', delete_after=10)
+        else:
+            await ctx.send(f'Hey {ctx.author.mention} you are not allowed to use tihs copmmand.')
 
     
     

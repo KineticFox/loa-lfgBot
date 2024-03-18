@@ -39,7 +39,7 @@ class ShoutoutTask(commands.Cog):
         await ctx.respond('stopped task', ephemeral=True)
 
     @shoutout.command(name='edit_time')
-    async def edit_time(self, ctx, time: discord.Option(int, 'time', description='Numbers between 1 & 24')): # type: ignore
+    async def edit_time(self, ctx, time: discord.Option(input_type=int, name='time', description='Numbers between 1 & 24')): # type: ignore
         self.send_message.change_interval(hours=time)
 
         await ctx.respon(f'change interval to {time}', ephemeral=True)
