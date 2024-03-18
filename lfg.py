@@ -20,6 +20,7 @@ import requests
 from datetime import datetime
 from loabot_modals import DateModal
 from loabot_views import *
+import random
 
 
 
@@ -1002,19 +1003,32 @@ def run(bot):
     @bot.slash_command(name="animal_bomb", description='Displays a random cat or dog image. 20sec command cooldown and images are deleted after 10 min')
     @discord.guild_only()
     @commands.cooldown(1,20, commands.BucketType.user)
-    async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog'], required=True)): # type: ignore
+    async def cat_bomb(ctx, animal:discord.Option(str, choices=['cat', 'dog', 'duck', 'fox'], required=True)): # type: ignore
         await ctx.defer()
 
         if animal == 'cat':
             res = requests.get('https://api.thecatapi.com/v1/images/search')
+            result = res.json()
+            img = result[0].get('url')
         elif animal == 'dog':
             res = requests.get('https://api.thedogapi.com/v1/images/search')
+            result = res.json()
+            img = result[0].get('url')
+        elif animal =='duck':
+            res = requests.get('https://random-d.uk/api/random')
+            result = res.json()
+            img = result.get('url')
+        elif animal == 'fox':
+            
+            c_random = random.randint(1,123)       
+            
+            img = f'https://randomfox.ca/images/{c_random}.jpg'
+
+
         
         if res.status_code != 200:
             await ctx.followup.send('some api error')    
-        else:
-            result = res.json()
-            img = result[0].get('url')
+        else:            
             await ctx.followup.send(f'{img}', delete_after=600)
 
     @bot.event
