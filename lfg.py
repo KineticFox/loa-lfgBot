@@ -697,7 +697,7 @@ def init():
     
     intents = discord.Intents.all()
     intents.message_content = True
-    bot = commands.Bot(command_prefix='!', intents=intents)
+    bot = commands.Bot(command_prefix='!', intents=intents, owner_id=469479291147517952)
     return bot
 
 def stop(bot):
@@ -707,43 +707,41 @@ def run(bot):
     dotenv.load_dotenv()
     token = str(os.getenv("TOKEN"))
 
+    
+
     @bot.command()
+    @commands.is_owner()
     async def load_cog(ctx, cog):
-        if ctx.author.id == 469479291147517952:
-            bot.load_extension(f'cogs.{cog}')
+        bot.load_extension(f'cogs.{cog}')
 
-            if  cog == 'orga':
-                welcome = bot.get_cog('MemberManagement')
-                await welcome.setupGuild()
-            
-            await bot.register_commands()
-            #await bot.sync_commands()
-            
-            await ctx.send(f'loaded {cog} cog', delete_after=10)
-        else:
-            await ctx.send(f'Hey {ctx.author.mention} you are not allowed to use tihs copmmand.')
+        if  cog == 'orga':
+            welcome = bot.get_cog('MemberManagement')
+            await welcome.setupGuild()
+        
+        await bot.register_commands()
+        #await bot.sync_commands()
+        
+        await ctx.send(f'loaded {cog} cog', delete_after=10)
+
     
     @bot.command()
+    @commands.is_owner()
     async def reload_cog(ctx, cog):
-        if ctx.author.id == 469479291147517952:
 
-            bot.reload_extension(f'cogs.{cog}')
+        bot.reload_extension(f'cogs.{cog}')
 
-            if  cog == 'orga':
-                welcome = bot.get_cog('WelcomeSetup')
-                await welcome.setupGuild()
-            
-            #await bot.sync_commands()
-            await ctx.send(f'reloaded {cog} cog', delete_after=10)
-        else:
-            await ctx.send(f'Hey {ctx.author.mention} you are not allowed to use tihs copmmand.')
+        if  cog == 'orga':
+            welcome = bot.get_cog('WelcomeSetup')
+            await welcome.setupGuild()
+        
+        #await bot.sync_commands()
+        await ctx.send(f'reloaded {cog} cog', delete_after=10)
+
     
     @bot.command()
+    @commands.is_owner()
     async def unload_cog(ctx, cog):
-        if ctx.author.id == 469479291147517952:
-            await ctx.send(f'unloaded {cog} cog', delete_after=10)
-        else:
-            await ctx.send(f'Hey {ctx.author.mention} you are not allowed to use tihs copmmand.')
+        bot.unload_extension(f'cogs.{cog}')
 
     
     
@@ -765,6 +763,7 @@ def run(bot):
 
     
     @bot.slash_command(name = "hi", description = "say hi")
+    @commands.is_owner()
     @discord.guild_only()
     async def hello(ctx):
         await ctx.respond(f"hello {ctx.user}")
@@ -981,15 +980,14 @@ def run(bot):
     
     @bot.slash_command(name="sql")
     @discord.guild_only()
+    @commands.is_owner()
     async def run_command(ctx, command:discord.Option(str, 'command', required=True)): # type: ignore
-        if ctx.author.name == 'mr.xilef':
-            db = LBDB()
-            db.use_db()
-            res = db.raw_SQL(command)
-            db.close()
-            await ctx.respond(res, ephemeral=True, delete_after=20)
-        else:
-            await ctx.respond(f'tztztz, you are not allowed to use this command', ephemeral=True, delete_after=20)
+        db = LBDB()
+        db.use_db()
+        res = db.raw_SQL(command)
+        db.close()
+        await ctx.respond(res, ephemeral=True, delete_after=20)
+        
     
     @bot.slash_command(name="help")
     async def help(ctx):
@@ -999,6 +997,7 @@ def run(bot):
                 2. Now you are good to go and you can join and create Groups/Raids / Jetzt kannst du Gruppen beitreten und erstellen\n
                 - with ```/show_chars``` you can get an overview of your registered chars / zeigt eine Übersicht deiner Chars an\n
                 - with ```/lfg``` you create a looking-for-group lobby / Befehl um Gruppen zu erstellen\n
+                - with ```/my_raids``` you get an overview of raids you participate in / Zeigt übersicht der raids in denen man angemeldet ist\n
 
                 Notes:
                 - Bitte keine Emojis verwenden in Textfeldern
@@ -1049,9 +1048,14 @@ def run(bot):
     async def on_application_command_error(ctx, error):
         if isinstance(error, commands.CommandOnCooldown):
             await ctx.respond(error, ephemeral=True)
+        elif isinstance(error, commands.NotOwner):
+            await ctx.respond(error, ephemeral=True)
+            logger.info(f'{ctx.guild.name}-{ctx.user.name}: {error}')
         else:
-            logger.warning(f'An error occured: {error}')
+            await ctx.respond(error, ephemeral=True)
+            logger.warning(f'{ctx.guild.name}: {error}')
             raise error
+    
 
     @bot.slash_command(name="my_raids")
     @discord.guild_only()
@@ -1080,7 +1084,6 @@ def run(bot):
             
             channel = await bot.fetch_channel(g.get('dc_id'))
             #link = await channel.create_invite()
-            print(channel.jump_url)
             title.append(channel.jump_url)
 
         e_chars = "\n".join(str(char) for char in chars)

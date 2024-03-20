@@ -13,7 +13,7 @@ class ShoutoutTask(commands.Cog):
     def cog_unload(self) -> None:
         self.send_message.cancel()
 
-    shoutout = SlashCommandGroup(name='message_tasks', description='Tasks for sending repeating messages in given interval', guild_only=True)
+    shoutout = SlashCommandGroup(name='message_tasks', description='Tasks for sending repeating messages in given interval', guild_only=True, checks=[commands.is_owner()])
 
 
     @tasks.loop(seconds=2, count=2)
@@ -27,6 +27,7 @@ class ShoutoutTask(commands.Cog):
 
 
     @shoutout.command(name='start_shoutout')
+    @commands.is_owner()
     async def start_shoutout(self, ctx, repetition:discord.Option(int,'repetition'), message: discord.Option(str,'message')): # type: ignore
         await ctx.respond('started task', ephemeral=True)
         self.send_message.count = repetition
@@ -34,6 +35,7 @@ class ShoutoutTask(commands.Cog):
 
  
     @shoutout.command(name='stop_shoutout')
+    @commands.is_owner()
     async def stop_shoutout(self,ctx):
         await self.stopping()
         await ctx.respond('stopped task', ephemeral=True)
