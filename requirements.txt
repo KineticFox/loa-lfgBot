@@ -3,3 +3,4 @@ python-dotenv
 #mariadb==1.0.11
 mariadb
 requests
+beautifulsoup4

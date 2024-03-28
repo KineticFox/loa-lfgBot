@@ -7,7 +7,6 @@ from discord.interactions import Interaction
 from discord.ui.input_text import InputText
 from discord.ui.item import Item
 from discord.ui import Button
-from discord.ext.pages import Paginator, Page
 import dotenv
 from loabot_db import LBDB
 import json
@@ -205,12 +204,14 @@ class LegionRaidCreation(discord.ui.View):
             m = await chanell.send('A Wild Raid spawns, come and join', embed=embed)
             thread = await m.create_thread(name=f"{embed.title}")
             thread_id = thread.id        
-            r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
+            
 
-        except discord.errors as e:
-            logger.warning(f'DC Error in creatRaid callback - {e}')
+        except Exception as e:
+            await interaction_handling_defer(interaction, e)
             await interaction.delete_original_response()
         
+        else:
+            r_id = self.db.store_group(edict.get('title'), fields[1].get('value'), fields[2].get('value'), fields[0].get('value'), thread_id, guild_name)
 
         if r_id is None or len(r_id) == 0:
             self.db.close()
@@ -230,7 +231,7 @@ class LegionRaidCreation(discord.ui.View):
     
 
 
-            
+#TODO: add exception handling from here on         
 
 
 class JoinRaid(discord.ui.View):

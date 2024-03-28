@@ -17,8 +17,8 @@ class ShoutoutTask(commands.Cog):
 
 
     @tasks.loop(seconds=2, count=2)
-    async def send_message(self, ctx: Context, message:str):
-        await ctx.send(message)
+    async def send_message(self, ctx: Context, message:str, delte_counter: int):
+        await ctx.send(message, delete_after=3540)
 
 
     async def stopping(self):
@@ -31,7 +31,7 @@ class ShoutoutTask(commands.Cog):
     async def start_shoutout(self, ctx, repetition:discord.Option(int,'repetition'), message: discord.Option(str,'message')): # type: ignore
         await ctx.respond('started task', ephemeral=True)
         self.send_message.count = repetition
-        await self.send_message.start(ctx, message)
+        await self.send_message.start(ctx, message, repetition)
 
  
     @shoutout.command(name='stop_shoutout')
