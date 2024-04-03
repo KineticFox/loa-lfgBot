@@ -1078,18 +1078,21 @@ def run(bot):
         chars = []
         raid = []
         title =[]
+        dates = []
 
         for g in group_list:
             chars.append(g.get('char_name'))
             raid.append(g.get('raid'))
+            dates.append(g.get('date'))
             
             channel = await bot.fetch_channel(g.get('dc_id'))
             #link = await channel.create_invite()
-            title.append(channel.jump_url)
+            title.append(f'{channel.jump_url} {g.get("date")}')
 
         e_chars = "\n".join(str(char) for char in chars)
         e_raid = "\n".join(str(r) for r in raid)
         e_title = "\n".join(str(t) for t in title)
+        #e_dates = "\n".join(str(d) for d in dates)
 
         panel.add_field(name='Char', value=e_chars)
         panel.add_field(name='Raid', value=e_raid)

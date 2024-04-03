@@ -37,6 +37,7 @@ class ServerStatus(commands.Cog):
     status = SlashCommandGroup(name='server_status', description='Commands for checking lost ark server status', guild_only=True)
 
     @status.command(name='get_server_status')
+    @commands.cooldown(1,120, commands.BucketType.user)
     async def server_Status(self, ctx, server = discord.Option(str, choices=['NAW', 'NAE', 'EUC', 'SA'], required=True)):
         await ctx.defer()
         region_int = Region.get_region(server)
@@ -115,7 +116,7 @@ class ServerStatus(commands.Cog):
 
         update_clean = last_update.strip()
 
-        await ctx.followup.send(f':white_check_mark: ({len(server_name_list_good)}): {", ".join(server_name_list_good)}\n:x: ({len(server_name_list_full)}): {",".join(server_name_list_full)}\n:yellow_circle: ({len(server_name_list_busy)}): {",".join(server_name_list_busy)}\n:tools: ({len(server_name_list_full)}): {",".join(server_name_list_full)}\n\n {last_update}', ephemeral=True)
+        await ctx.followup.send(f'Serverstatus for **{server}**:\n\n:white_check_mark: ({len(server_name_list_good)}): {", ".join(server_name_list_good)}\n:x: ({len(server_name_list_full)}): {",".join(server_name_list_full)}\n:yellow_circle: ({len(server_name_list_busy)}): {",".join(server_name_list_busy)}\n:tools: ({len(server_name_list_maintenance)}): {",".join(server_name_list_maintenance)}\n\n {last_update}', ephemeral=True, delete_after=120)
 
 
 

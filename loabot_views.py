@@ -122,7 +122,7 @@ class KickDialogue(discord.ui.Select):
             
             if char_result is None:
                 db.close()
-                await interaction.followup.send('User is not in thread / Benutzer ist nicht im Raid')
+                await interaction.followup.send('User is not in thread / Benutzer ist nicht im Raid', ephemeral=True)
             else:
                 message = db.get_message(group_id, guild_name)
                 m_id = message['m_id']
