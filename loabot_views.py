@@ -3,7 +3,6 @@ from discord.ui.item import Item
 from loabot_db import LBDB
 from loabot_modals import CharModal
 import re
-from loabot_logger import logger
 from exception_handling import interaction_handling, interaction_handling_defer
 
 class RegisterChar(discord.ui.View):
@@ -486,7 +485,7 @@ class RemoteCharSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
 
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         selectedChar = self.values[0]
         self.placeholder = self.values[0]
 

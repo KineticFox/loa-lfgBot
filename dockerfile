@@ -6,7 +6,9 @@ COPY lfg.py ./
 COPY loabot_db.py ./
 COPY loabot_modals.py ./
 COPY loabot_views.py ./
-COPY cogs/ ./
+COPY exception_handling.py ./
+COPY loabot_logger.py ./
+COPY cogs/ ./cogs
 #COPY .env ./
 COPY requirements.txt ./
 RUN mkdir /data
