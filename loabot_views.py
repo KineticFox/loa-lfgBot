@@ -197,7 +197,7 @@ class CharSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            await interaction.response.defer()
+            await interaction.response.defer(ephemeral=True)
             selectedChar = self.values[0]
             self.placeholder = self.values[0]
 
