@@ -1041,7 +1041,7 @@ def run(bot):
 
         
         if res.status_code != 200:
-            await ctx.followup.send('some api error')    
+            await ctx.followup.send('some api error', ephemeral=True)    
         else:            
             await ctx.followup.send(f'{img}', delete_after=600)
 

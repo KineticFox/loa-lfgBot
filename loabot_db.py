@@ -190,9 +190,10 @@ class LBDB:
             char_name (str): char name,
             class (str): class of the char,
             ilvl (int): ilvl of the char
+            emoji (str): emoji discord string
         """
         try:
-            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user_id]) 
+            self.cur.execute(f'SELECT char_name, class, ilvl, emoji FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user_id]) 
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:

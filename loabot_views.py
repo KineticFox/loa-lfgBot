@@ -564,7 +564,7 @@ class RemoteCharSelect(discord.ui.Select):
                             d_count = int(dps_count) + 1
                             embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                             dps_string = e_fields[6].get('value')
-                            new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                            new_dps_string = dps_string + f'\n{charname.get("char_name")}{charname.get("emoji")} ({ilvl}) - {self.user.name}\n'
                             embed.set_field_at(6, name='DPS', value=new_dps_string)                
                         else:
                             g_mc += 1
@@ -572,7 +572,7 @@ class RemoteCharSelect(discord.ui.Select):
                             s_count = int(supp_count) + 1
                             embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                             supp_string = e_fields[7].get('value')
-                            new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                            new_supp_string = supp_string + f'\n{charname.get("char_name")}{charname.get("emoji")} ({ilvl}) - {self.user.name}\n'
                             embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
                         
@@ -593,8 +593,7 @@ class RemoteCharSelect(discord.ui.Select):
             elif interaction.user.get_role(erklearbear_role_id) or interaction.user.get_role(admin_role_id):            
 
                 if(check is None):
-                    try:
-                        
+                    try:                        
                         
 
                         if(role == 'DPS'):
@@ -604,7 +603,7 @@ class RemoteCharSelect(discord.ui.Select):
                             d_count = int(dps_count) + 1
                             embed.set_field_at(3,name='Anzahl DPS:', value=d_count)
                             dps_string = e_fields[6].get('value')
-                            new_dps_string = dps_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                            new_dps_string = dps_string + f'\n{charname.get("char_name")}{charname.get("emoji")} ({ilvl}) - {self.user.name}\n'
                             embed.set_field_at(6, name='DPS', value=new_dps_string)                
                         else:
                             g_mc += 1
@@ -612,7 +611,7 @@ class RemoteCharSelect(discord.ui.Select):
                             s_count = int(supp_count) + 1
                             embed.set_field_at(4,name='Anzahl SUPP:', value=s_count)
                             supp_string = e_fields[7].get('value')
-                            new_supp_string = supp_string + f'\n{charname.get("char_name")} ({ilvl}) - {self.user.name}\n'
+                            new_supp_string = supp_string + f'\n{charname.get("char_name")}{charname.get("emoji")} ({ilvl}) - {self.user.name}\n'
                             embed.set_field_at(7, name='SUPP', value=new_supp_string)
 
                         
