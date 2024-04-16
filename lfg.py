@@ -37,7 +37,6 @@ raids = {}
 class RaidOverview(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-
         self.cooldown = commands.CooldownMapping.from_cooldown(1, 120, commands.BucketType.member)
 
 
@@ -72,22 +71,42 @@ class RaidOverview(discord.ui.View):
         length_check = False
         embed_length= len(embed.description)
 
+        e_dict = embed.to_dict()
+        e_fields = e_dict.get('fields')
+
+
         for g in groups_list:
-            membercount.append(g.get("raid_mc"))
-            raid.append(f'{g.get("raid")}')
-            m = g.get('raid_mode')
-            mode.append(m.split(' ')[0])
+
             thread = await interaction.guild.fetch_channel(g.get('dc_id'))
             channel_id = thread.parent_id
             channel = await interaction.guild.fetch_channel(channel_id)            
             message = await channel.fetch_message(g.get('dc_id'))
-            url = message.jump_url
-            threads.append(url)
-            new_length = len(threads) + embed_length
-            if new_length >= 3900:
-                length_check = True
+
+            if e_fields[0].get('value') == channel.name:
+           
+                #if m.find('Normal') != -1:
+                #    name = f'{g.get("raid")} Normal'
+                #elif m.find('Hard') != -1:
+                #    name = f'{g.get("raid")} Hard'
+
+                #ping = roles.get(name)
+
+                membercount.append(g.get("raid_mc"))
+                raid.append(f'{g.get("raid")}')
+                m = g.get('raid_mode')
+                mode.append(m.split(' ')[0])
             
-            title.append(g.get('raid_title'))
+                url = message.jump_url
+                threads.append(url)
+                new_length = len(threads) + embed_length
+                if new_length >= 3900:
+                    length_check = True
+                
+                title.append(g.get('raid_title'))
+            
+            else:
+                continue
+           
 
         
         time = datetime.now()
@@ -106,7 +125,6 @@ class RaidOverview(discord.ui.View):
                 text_list.append(f'**Thread**: {threads[i]}\t\t**Raid**: {raid[i]}\t\t**Mitglieder**: {membercount[i]}\t\t**Mode**: {mode[i]}')
             
             text = "\n".join(t for t in text_list) 
-
             embed.description=text      
             embed.set_footer(text=f'last updated at: {current_time}')
             await interaction.message.edit(embed=embed, view=self)
@@ -1102,11 +1120,21 @@ def run(bot):
     
     @bot.slash_command(name='raid_overview')
     @discord.guild_only()
-    async def raids_overview(ctx):
+    async def raids_overview(ctx, type:discord.Option(discord.TextChannel, required=True)):#, raids:discord.Option(discord.Role, required=True, max_value=)):
         await ctx.defer()
         db = LBDB()
         db.use_db()
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+        roles = {}
+        #TODO: better way for all the roles and implement all the roles
+        #c_role = discord.utils.get(await ctx.guild.fetch_roles(), name='Clown Normal')
+        #b_role = discord.utils.get(await ctx.guild.fetch_roles(), name='Brelshaza Normal')
+        #bh_role = discord.utils.get(await ctx.guild.fetch_roles(), name='Brelshaza Hard')
+        #for role in raids:
+        #roles[f'{c_role.name}'] = c_role
+        #roles[f'{b_role.name}'] = b_role
+        #roles[f'{bh_role.name}'] = bh_role
+
 
         groups_list = db.get_group_overview(tablename)
         db.close()
@@ -1127,9 +1155,9 @@ def run(bot):
         #add embed creation depending on boolean
 
         for g in groups_list:
-            embed_length = len(embed.description)
+            #embed_length = len(embed.description)
                     
-            m = g.get('raid_mode')
+            m:str = g.get('raid_mode')
             
             thread = await bot.fetch_channel(g.get('dc_id'))
             channel_id = thread.parent_id
@@ -1137,13 +1165,27 @@ def run(bot):
             message = await channel.fetch_message(g.get('dc_id'))
             url = message.jump_url
 
-            threads.append(url)
-            new_length = len(threads) + embed_length
+            if type.name == channel.name:
+           
+                #if m.find('Normal') != -1:
+                #    name = f'{g.get("raid")} Normal'
+                #elif m.find('Hard') != -1:
+                #    name = f'{g.get("raid")} Hard'
+
+                #ping = roles.get(name)
+
+                threads.append(url)
+                #new_length = len(threads) + embed_length
+                
+                membercount.append(g.get("raid_mc"))
+                raid.append(f'{g.get("raid")}')# f'{ping.mention}'
+                mode.append(m.split(' ')[0])
+                title.append(g.get('raid_title'))
             
-            membercount.append(g.get("raid_mc"))
-            raid.append(f'{g.get("raid")}')
-            mode.append(m.split(' ')[0])
-            title.append(g.get('raid_title'))
+            else:
+                continue
+
+
 
         time = datetime.now()
         current_time = time.strftime("%H:%M:%S")
@@ -1162,11 +1204,12 @@ def run(bot):
             
             
             embed.set_footer(text=updated)
+            embed.add_field(name='Channel:', value=f'{type.name}')
 
             #text_list.append(f'\n*last updated at: {current_time}*')
             text = "\n".join(t for t in text_list)
             embed.description = text
-            
+            #TODO: update view to get roles via update button too
             await ctx.followup.send(view=RaidOverview(), embed=embed)
 
 
