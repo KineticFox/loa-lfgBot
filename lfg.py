@@ -20,6 +20,7 @@ from datetime import datetime
 from loabot_modals import DateModal
 from loabot_views import *
 import random
+from utils.dc_roles import roles
 
 
 
@@ -83,21 +84,28 @@ class RaidOverview(discord.ui.View):
             message = await channel.fetch_message(g.get('dc_id'))
 
             if e_fields[0].get('value') == channel.name:
-           
-                #if m.find('Normal') != -1:
-                #    name = f'{g.get("raid")} Normal'
-                #elif m.find('Hard') != -1:
-                #    name = f'{g.get("raid")} Hard'
-
-                #ping = roles.get(name)
 
                 membercount.append(g.get("raid_mc"))
-                raid.append(f'{g.get("raid")}')
+                #raid.append(f'{g.get("raid")}')
                 m = g.get('raid_mode')
                 mode.append(m.split(' ')[0])
             
                 url = message.jump_url
                 threads.append(url)
+
+                if m.find('Normal') != -1:
+                    name = f'{g.get("raid")} Normal'
+                    
+                elif m.find('Hard') != -1:
+                    name = f'{g.get("raid")} Hard'
+                
+                ping = roles.get(name)
+
+                if ping is None:
+                    raid.append(f'{g.get("raid")}')
+                else:                
+                    raid.append(f'<@&{ping}>')
+
                 new_length = len(threads) + embed_length
                 if new_length >= 3900:
                     length_check = True
@@ -965,6 +973,7 @@ def run(bot):
         db.close()
 
     @bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
+    @commands.is_owner()
     @discord.guild_only()
     async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)): # type: ignore
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -1125,16 +1134,6 @@ def run(bot):
         db = LBDB()
         db.use_db()
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
-        roles = {}
-        #TODO: better way for all the roles and implement all the roles
-        #c_role = discord.utils.get(await ctx.guild.fetch_roles(), name='Clown Normal')
-        #b_role = discord.utils.get(await ctx.guild.fetch_roles(), name='Brelshaza Normal')
-        #bh_role = discord.utils.get(await ctx.guild.fetch_roles(), name='Brelshaza Hard')
-        #for role in raids:
-        #roles[f'{c_role.name}'] = c_role
-        #roles[f'{b_role.name}'] = b_role
-        #roles[f'{bh_role.name}'] = bh_role
-
 
         groups_list = db.get_group_overview(tablename)
         db.close()
@@ -1167,18 +1166,26 @@ def run(bot):
 
             if type.name == channel.name:
            
-                #if m.find('Normal') != -1:
-                #    name = f'{g.get("raid")} Normal'
-                #elif m.find('Hard') != -1:
-                #    name = f'{g.get("raid")} Hard'
+                if m.find('Normal') != -1:
+                    name = f'{g.get("raid")} Normal'
+                    
+                elif m.find('Hard') != -1:
+                    name = f'{g.get("raid")} Hard'
+                
+                ping = roles.get(name)
 
-                #ping = roles.get(name)
+                if ping is None:
+                    raid.append(f'{g.get("raid")}')
+                else:                
+                    raid.append(f'<@&{ping}>')# f'{ping.mention}'g.get("raid")
+
+                
 
                 threads.append(url)
                 #new_length = len(threads) + embed_length
                 
                 membercount.append(g.get("raid_mc"))
-                raid.append(f'{g.get("raid")}')# f'{ping.mention}'
+                
                 mode.append(m.split(' ')[0])
                 title.append(g.get('raid_title'))
             

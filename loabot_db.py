@@ -699,11 +699,11 @@ class LBDB:
 
     def get_group_overview(self, table:str)->list:
         """
-        returns a list of groups which aren't at max membercount
-        """
+        returns a list of groups  
+        """#which aren't at max membercount and are not Guardian raids
         
         try:
-            self.cur.execute(f'SELECT {table}_groups.raid_title, {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
+            self.cur.execute(f'SELECT {table}_groups.raid_title, {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name) ') #AND (SELECT TechKeller_raids.type FROM TechKeller_raids WHERE TechKeller_raids.name={table}_groups.raid) != "Guardian"
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:

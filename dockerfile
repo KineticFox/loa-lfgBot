@@ -9,6 +9,7 @@ COPY loabot_views.py ./
 COPY exception_handling.py ./
 COPY loabot_logger.py ./
 COPY cogs/ ./cogs
+COPY utils/ ./utils
 #COPY .env ./
 COPY requirements.txt ./
 RUN mkdir /data
