@@ -39,6 +39,9 @@ class CharModal(discord.ui.Modal):
                 int_ilvl = int(ilvl)
             except ValueError as e:
                 await interaction.followup.send(e, delete_after=10, ephemeral=True)
+        
+        if self.role == 'DD':
+            self.role = 'DPS'
 
         
         res = self.db.add_chars(self.children[0].value, self.char, interaction.user.name, int_ilvl, self.role, table, u_id, emoji)

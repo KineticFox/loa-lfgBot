@@ -168,11 +168,12 @@ class LBDB:
             char_name (str): char name,
             raid (str): raid,
             raid_title (str): title of the group,
+            date(str): list of raid dates,
             dc_id (str): thread id of the group
         """
 
         try:
-            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id  FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
+            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id, {table}_groups.date FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
             res = self.cur.fetchall()
             return res            
         
@@ -189,9 +190,10 @@ class LBDB:
             char_name (str): char name,
             class (str): class of the char,
             ilvl (int): ilvl of the char
+            emoji (str): emoji discord string
         """
         try:
-            self.cur.execute(f'SELECT char_name, class, ilvl FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user_id]) 
+            self.cur.execute(f'SELECT char_name, class, ilvl, emoji FROM {table}_chars WHERE user_id=(SELECT id FROM {table}_user where user_id=?)', [user_id]) 
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
@@ -697,11 +699,11 @@ class LBDB:
 
     def get_group_overview(self, table:str)->list:
         """
-        returns a list of groups which aren't at max membercount
-        """
+        returns a list of groups  
+        """#which aren't at max membercount and are not Guardian raids
         
         try:
-            self.cur.execute(f'SELECT {table}_groups.raid_title, {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name)')
+            self.cur.execute(f'SELECT {table}_groups.raid_title, {table}_groups.raid, {table}_groups.raid_mode, {table}_groups.dc_id, {table}_groups.raid_mc FROM {table}_groups WHERE {table}_groups.raid_mc < (SELECT TechKeller_raids.member FROM TechKeller_raids WHERE {table}_groups.raid=TechKeller_raids.name) ') #AND (SELECT TechKeller_raids.type FROM TechKeller_raids WHERE TechKeller_raids.name={table}_groups.raid) != "Guardian"
             res = self.cur.fetchall()
             return res
         except mariadb.Error as e:
