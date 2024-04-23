@@ -92,12 +92,17 @@ class RaidOverview(discord.ui.View):
             
                 url = message.jump_url
                 threads.append(url)
-
-                if m.find('Normal') != -1:
+                name =''
+                argos = g.get('raid')
+                if argos.find('Argos') != -1:
+                    name = 'Argos'
+                elif m.find('Normal') != -1:
                     name = f'{g.get("raid")} Normal'
                     
                 elif m.find('Hard') != -1:
                     name = f'{g.get("raid")} Hard'
+                elif m.find('Static') != -1:
+                    name = f'{g.get("raid")} Static'
                 
                 ping = roles.get(name)
 
@@ -168,7 +173,7 @@ class LegionRaidCreation(discord.ui.View):
     )
     async def buttonCancel_callback(self, button, interaction):
         #await interaction.message.delete()
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         self.db.close()
         
         await interaction.delete_original_response()
@@ -242,7 +247,7 @@ class LegionRaidCreation(discord.ui.View):
         if r_id is None or len(r_id) == 0:
             self.db.close()
             logger.warning(f'Raid creation failed for {interaction.user.name}')
-            await interaction.followup.send('Something went wrong!')
+            await interaction.followup.send('Something went wrong!', ephemeral=True)
             await m.delete()
             await thread.delete()   
         else:             
@@ -1130,7 +1135,7 @@ def run(bot):
     @bot.slash_command(name='raid_overview')
     @discord.guild_only()
     async def raids_overview(ctx, type:discord.Option(discord.TextChannel, required=True)):#, raids:discord.Option(discord.Role, required=True, max_value=)):
-        await ctx.defer()
+        await ctx.defer(ephemeral=True, invisible=True)
         db = LBDB()
         db.use_db()
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -1157,6 +1162,7 @@ def run(bot):
             #embed_length = len(embed.description)
                     
             m:str = g.get('raid_mode')
+
             
             thread = await bot.fetch_channel(g.get('dc_id'))
             channel_id = thread.parent_id
@@ -1165,12 +1171,17 @@ def run(bot):
             url = message.jump_url
 
             if type.name == channel.name:
-           
-                if m.find('Normal') != -1:
+                name =''
+                argos = g.get('raid')
+                if argos.find('Argos') != -1:
+                    name = 'Argos'
+                elif m.find('Normal') != -1:
                     name = f'{g.get("raid")} Normal'
                     
                 elif m.find('Hard') != -1:
                     name = f'{g.get("raid")} Hard'
+                elif m.find('Static') != -1:
+                    name = f'{g.get("raid")} Static'
                 
                 ping = roles.get(name)
 
@@ -1216,8 +1227,8 @@ def run(bot):
             #text_list.append(f'\n*last updated at: {current_time}*')
             text = "\n".join(t for t in text_list)
             embed.description = text
-            #TODO: update view to get roles via update button too
-            await ctx.followup.send(view=RaidOverview(), embed=embed)
+            await ctx.channel.send(view=RaidOverview(), embed=embed)
+            await ctx.followup.send('Send overview', ephemeral=True, delete_after=5)
 
 
     @bot.slash_command(name="add_dcadmin", description="Adds a user to the admin table ")
