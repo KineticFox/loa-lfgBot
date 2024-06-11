@@ -529,6 +529,7 @@ class JoinRaid(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
         embed = interaction.message.embeds[0]
         author = embed.author.name
         embed_dict = embed.to_dict()
@@ -539,7 +540,10 @@ class JoinRaid(discord.ui.View):
         thread = None
         
         #admin_role = discord.utils.get(await interaction.guild.fetch_roles(), name='Dev')
-        admin_role_id = 1006783350188560416
+
+        admin_role_dict = db.get_admin_role(guild_name)
+
+        admin_role_id = admin_role_dict.get('role_id')
 
         chanell = {}
         if interaction.guild.get_channel(interaction.channel.id) is None:
@@ -1231,16 +1235,18 @@ def run(bot):
             await ctx.followup.send('Send overview', ephemeral=True, delete_after=5)
 
 
-    @bot.slash_command(name="add_dcadmin", description="Adds a user to the admin table ")
+    @bot.slash_command(name="add_dcadmin", description="Adds a admin role to the admin table ")
     @discord.guild_only()
-    async def db_addadmin(ctx, user: discord.Member ):
+    async def db_addadmin(ctx, role: discord.Role ):
         await ctx.defer(ephemeral=True)
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
         db.use_db()
-        member = user
-        u_id = member.id
         
-        result = db.add_admin(u_id)
+        u_id = role.id
+        
+        result = db.add_admin(u_id, guild_name)
+
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
