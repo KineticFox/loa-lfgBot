@@ -436,9 +436,18 @@ class RaidSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         self.parentview.embed.add_field(name=f'Raid: ', value=self.values[0], inline=True)
         self.placeholder = self.values[0]
-        self.parentview.selectedRaid = self.parentview.raids[self.values[0]]
+        #self.parentview.selectedRaid = self.parentview.raids[self.values[0]]
+        raid = {}
+        for r in self.raids:
+            if r.get('name') == self.values[0]:
+                raid = r
+                break
+
         self.disabled = True
-        self.parentview.add_item(RaidModeSelect(parentview=self.parentview, mode=self.parentview.raids[self.values[0]]))
+        mode_str = raid.get('modes')
+        modes = mode_str.split(',')
+        self.parentview.add_item(RaidModeSelect(parentview=self.parentview, mode=modes)) #self.parentview.raids[self.values[0]]
+        
         try:
             await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
         except Exception as e:
@@ -452,7 +461,7 @@ class RaidModeSelect(discord.ui.Select):
         def set_options():
             list = []
             list.append(discord.SelectOption(label='Static', description='For static groups'))
-            for m in self.mode.get('modes'):
+            for m in self.mode:
                 list.append(discord.SelectOption(label=m))
             return list
         

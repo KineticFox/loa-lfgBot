@@ -33,7 +33,7 @@ logger.addHandler(handler)
 logger.propagate = False
 
 #----------------------------------------------------------------------------------------------------------------------------#
-raids = {}
+#raids = {}
 
 class RaidOverview(discord.ui.View):
     def __init__(self):
@@ -147,21 +147,15 @@ class RaidOverview(discord.ui.View):
 
 class LegionRaidCreation(discord.ui.View):
 
-    def __init__(self,db, raids, embed):
+    def __init__(self,db, embed):
         super().__init__(timeout=None)
         self.db = db
-        self.raids = raids
+        #self.raids = {}
         self.modes = {}
-        self.selectedRaid = {}
+        #self.selectedRaid = {}
         self.add_item(RaidType(self))
         self.embed = embed
         self.thread = None
-
-
-    def set_modes(self, select, value):
-        modes = value.get('modes')
-        for mode in modes:
-            select.append_option(discord.SelectOption(label=mode))
 
 
     @discord.ui.button(
@@ -791,7 +785,7 @@ def run(bot):
             guilds.append(t)
         
         db.setup(guilds)
-        set_Raids(db, guilds)
+        #set_Raids(db, guilds)
         bot.add_view(JoinRaid())
         bot.add_view(RaidOverview())
         db.close()
@@ -821,7 +815,7 @@ def run(bot):
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=clean_name)
 
-        await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
+        await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, panel), ephemeral=True) #removed raids
 
     
     # @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
@@ -967,7 +961,7 @@ def run(bot):
         raid_file.close()
 
         await ctx.followup.send(f'added the new Raids', delete_after=20)      
-        set_Raids(db, 'TechKeller')
+        #set_Raids(db, 'TechKeller')
         db.close()
     
     @bot.slash_command(name="upload_image", description="Upload specific raid image")
@@ -999,7 +993,7 @@ def run(bot):
             url = attachment.attachments[0].url
             db.save_image(fname_lower, url, 'TechKeller')
 
-        set_Raids(db)
+        #set_Raids(db)
         db.close()
     
     
