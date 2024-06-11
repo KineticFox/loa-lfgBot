@@ -443,6 +443,17 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Database get raid Error - {e}')
             return ['error']
+    
+    def get_typed_raids_inorder(self, table, type):
+        """
+        returns raids of chosen Type ordered by release
+        """
+        try:
+            self.cur.execute(f'SELECT * FROM {table}_raids WHERE type=? ORDER BY raid_order ASC', [type])
+            return self.cur.fetchall()
+        except mariadb.Error as e:
+            logger.warning(f'Database get raid Error - {e}')
+
         
     def get_raid_mc(self, raid) -> dict:
         """

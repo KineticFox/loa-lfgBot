@@ -395,6 +395,7 @@ class CharSelect(discord.ui.Select):
 class RaidType(discord.ui.Select):
     def __init__(self, parentview) -> None:
         self.parentview = parentview
+        self.raids = []
         def set_options():
             types = ['Legion', 'Abyssal', 'Guardian']
             list = []
@@ -404,26 +405,30 @@ class RaidType(discord.ui.Select):
         super().__init__(custom_id='raid_type', placeholder='Choose a Raid Type', min_values=1, max_values=1, options=set_options(), disabled=False)
 
     async def callback(self, interaction: discord.Interaction):
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
         r_type = self.values[0]
         self.placeholder = self.values[0]
-        self.parentview.add_item(RaidSelect(parentview=self.parentview, raid_type=r_type))
+        db = LBDB()
+        db.use_db()
+        raids = db.get_typed_raids_inorder(guild_name, r_type)
+        self.parentview.add_item(RaidSelect(parentview=self.parentview, raid_type=r_type, raids= raids))
         self.disabled = True
+
         try:
             await interaction.response.edit_message(view=self.parentview, embed=self.parentview.embed)
         except Exception as e:
             await interaction_handling(interaction, e)
 
 class RaidSelect(discord.ui.Select):
-    def __init__(self, parentview, raid_type) -> None:
+    def __init__(self, parentview, raid_type, raids) -> None:
         self.parentview = parentview
         self.raid_type= raid_type
+        self.raids = raids
         def set_options():
             list = []
-            #print('legin creation ',self.parentview.raids['Valtan'])
 
-            for key, value in self.parentview.raids.items():
-                if value.get('type') == self.raid_type:
-                    list.append(discord.SelectOption(label=key, description=value.get('type')))
+            for r in self.raids:
+                list.append(discord.SelectOption(label=r.get('name'), description=r.get('type')))
             return list
 
         super().__init__(custom_id='raid_selection', placeholder='Choose a Raid', min_values=1, max_values=1, options=set_options(), disabled=False)
