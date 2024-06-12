@@ -405,12 +405,12 @@ class RaidType(discord.ui.Select):
         super().__init__(custom_id='raid_type', placeholder='Choose a Raid Type', min_values=1, max_values=1, options=set_options(), disabled=False)
 
     async def callback(self, interaction: discord.Interaction):
-        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+        #guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
         r_type = self.values[0]
         self.placeholder = self.values[0]
         db = LBDB()
         db.use_db()
-        raids = db.get_typed_raids_inorder(guild_name, r_type)
+        raids = db.get_typed_raids_inorder(r_type)
         self.parentview.add_item(RaidSelect(parentview=self.parentview, raid_type=r_type, raids= raids))
         self.disabled = True
 

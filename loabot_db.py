@@ -444,15 +444,15 @@ class LBDB:
             logger.warning(f'Database get raid Error - {e}')
             return ['error']
     
-    def get_typed_raids_inorder(self, table, type):
+    def get_typed_raids_inorder(self, type):
         """
         returns raids of chosen Type ordered by release
         """
         try:
-            self.cur.execute(f'SELECT * FROM {table}_raids WHERE type=? ORDER BY raid_order ASC', [type])
+            self.cur.execute(f'SELECT * FROM TechKeller_raids WHERE type=? ORDER BY raid_order ASC', [type])
             return self.cur.fetchall()
         except mariadb.Error as e:
-            logger.warning(f'Database get raid Error - {e}')
+            logger.warning(f'Database get raid orderd Error - {e}')
 
         
     def get_raid_mc(self, raid) -> dict:
