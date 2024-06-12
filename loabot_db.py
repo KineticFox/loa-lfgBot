@@ -443,6 +443,17 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Database get raid Error - {e}')
             return ['error']
+    
+    def get_typed_raids_inorder(self, table, type):
+        """
+        returns raids of chosen Type ordered by release
+        """
+        try:
+            self.cur.execute(f'SELECT * FROM {table}_raids WHERE type=? ORDER BY raid_order ASC', [type])
+            return self.cur.fetchall()
+        except mariadb.Error as e:
+            logger.warning(f'Database get raid Error - {e}')
+
         
     def get_raid_mc(self, raid) -> dict:
         """
@@ -540,6 +551,7 @@ class LBDB:
             return self.cur.fetchone()
         except mariadb.Error as e:
             logger.warning(f'Database get image Error: {e}')
+    
             
 
 
@@ -709,21 +721,31 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'group overview DB error - {e}')
     
-    def add_admin(self, user_id:str)->str:
+    def add_admin(self, role_id:str, guild_name : str)->str:
         """
         Adds user_id to the Discord Admins table.
         """
         try:
-            self.cur.execute(f'SELECT id FROM Techkeller_admins WHERE user_id=?', [user_id])
+            self.cur.execute(f'SELECT id FROM Techkeller_admins WHERE role_id=?', [role_id])
             res = self.cur.fetchall()
             if len(res) != 0:
                 logger.info(f'User already exists in DB')
-                return f'User already exists in DB'
+                return f'Role already exists in DB'
             else:
-                self.cur.execute(f'INSERT INTO Techkeller_admins(user_id) VALUES (?)', [user_id])
-                return f'added your DC-User to the DB'
+                self.cur.execute(f'INSERT INTO Techkeller_admins(user_id, guild) VALUES (?)', [role_id, guild_name])
+                return f'added the role to the DB'
         except mariadb.Error as e:
             logger.warning(f'Add user admin insert error: {e}')
+    
+    def get_admin_role(self, guild_name : str) -> int:
+        """
+        returns the role_id of the DC role which should have permission to delete things
+        """
+        try:
+            self.cur.execute('SELECT role_id from Techkeller_admins WHERE guild=?', [guild_name])
+            return self.cur.fetchone()
+        except mariadb.Error as e:
+            logger.warning(f'get admin role error: {e}')
 
     def update_date(self, table:str, group_id:int, date:str) -> None:
         """

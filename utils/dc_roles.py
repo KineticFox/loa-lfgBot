@@ -16,6 +16,16 @@ roles = {
     'Vykas Normal': '1229769082744864788',
     'Valtan Hellmode': '1229768888515035270',
     'Valtan Hard': '1229768415481303090',
-    'Valtan Normal': '1229768226229981245'
+    'Valtan Normal': '1229768226229981245',
+    'Elfenbeinturm Hard': '1229774299783499777',
+    'Elfenbeinturm Normal': '1229774173174501457',
+    'Valtan Static': '1230123314903777321',
+    'Vykas Static': '1230123389025521686',
+    'Clown Static': '1230123441282093068',
+    'Brelshaza Static': '1230123501961347146',
+    'Argos Static': '1230123687068438631',
+    'Kayangel Static': '1230123742248697948',
+    'Thaemine Static': '1230123614821683302',
+    'Akkan Static': '1230123560828276846',
+    'Elfenbeinturm Static': '1230123797147947128',
 }
-

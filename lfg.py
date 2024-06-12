@@ -33,7 +33,7 @@ logger.addHandler(handler)
 logger.propagate = False
 
 #----------------------------------------------------------------------------------------------------------------------------#
-raids = {}
+#raids = {}
 
 class RaidOverview(discord.ui.View):
     def __init__(self):
@@ -92,12 +92,17 @@ class RaidOverview(discord.ui.View):
             
                 url = message.jump_url
                 threads.append(url)
-
-                if m.find('Normal') != -1:
+                name =''
+                argos = g.get('raid')
+                if argos.find('Argos') != -1:
+                    name = 'Argos'
+                elif m.find('Normal') != -1:
                     name = f'{g.get("raid")} Normal'
                     
                 elif m.find('Hard') != -1:
                     name = f'{g.get("raid")} Hard'
+                elif m.find('Static') != -1:
+                    name = f'{g.get("raid")} Static'
                 
                 ping = roles.get(name)
 
@@ -142,21 +147,15 @@ class RaidOverview(discord.ui.View):
 
 class LegionRaidCreation(discord.ui.View):
 
-    def __init__(self,db, raids, embed):
+    def __init__(self,db, embed):
         super().__init__(timeout=None)
         self.db = db
-        self.raids = raids
+        #self.raids = {}
         self.modes = {}
-        self.selectedRaid = {}
+        #self.selectedRaid = {}
         self.add_item(RaidType(self))
         self.embed = embed
         self.thread = None
-
-
-    def set_modes(self, select, value):
-        modes = value.get('modes')
-        for mode in modes:
-            select.append_option(discord.SelectOption(label=mode))
 
 
     @discord.ui.button(
@@ -168,7 +167,7 @@ class LegionRaidCreation(discord.ui.View):
     )
     async def buttonCancel_callback(self, button, interaction):
         #await interaction.message.delete()
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         self.db.close()
         
         await interaction.delete_original_response()
@@ -242,7 +241,7 @@ class LegionRaidCreation(discord.ui.View):
         if r_id is None or len(r_id) == 0:
             self.db.close()
             logger.warning(f'Raid creation failed for {interaction.user.name}')
-            await interaction.followup.send('Something went wrong!')
+            await interaction.followup.send('Something went wrong!', ephemeral=True)
             await m.delete()
             await thread.delete()   
         else:             
@@ -524,6 +523,7 @@ class JoinRaid(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         db = LBDB()
         db.use_db()
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
         embed = interaction.message.embeds[0]
         author = embed.author.name
         embed_dict = embed.to_dict()
@@ -534,7 +534,10 @@ class JoinRaid(discord.ui.View):
         thread = None
         
         #admin_role = discord.utils.get(await interaction.guild.fetch_roles(), name='Dev')
-        admin_role_id = 1006783350188560416
+
+        admin_role_dict = db.get_admin_role(guild_name)
+
+        admin_role_id = admin_role_dict.get('role_id')
 
         chanell = {}
         if interaction.guild.get_channel(interaction.channel.id) is None:
@@ -782,7 +785,7 @@ def run(bot):
             guilds.append(t)
         
         db.setup(guilds)
-        set_Raids(db, guilds)
+        #set_Raids(db, guilds)
         bot.add_view(JoinRaid())
         bot.add_view(RaidOverview())
         db.close()
@@ -812,7 +815,7 @@ def run(bot):
         panel.add_field(name="Date/Time: ", value=time, inline=True)
         panel.set_author(name=clean_name)
 
-        await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, raids, panel), ephemeral=True)
+        await ctx.respond("A wild raid spawns, come and join", embed=panel, view=LegionRaidCreation(db, panel), ephemeral=True) #removed raids
 
     
     # @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
@@ -958,7 +961,7 @@ def run(bot):
         raid_file.close()
 
         await ctx.followup.send(f'added the new Raids', delete_after=20)      
-        set_Raids(db, 'TechKeller')
+        #set_Raids(db, 'TechKeller')
         db.close()
     
     @bot.slash_command(name="upload_image", description="Upload specific raid image")
@@ -990,7 +993,7 @@ def run(bot):
             url = attachment.attachments[0].url
             db.save_image(fname_lower, url, 'TechKeller')
 
-        set_Raids(db)
+        #set_Raids(db)
         db.close()
     
     
@@ -1130,7 +1133,7 @@ def run(bot):
     @bot.slash_command(name='raid_overview')
     @discord.guild_only()
     async def raids_overview(ctx, type:discord.Option(discord.TextChannel, required=True)):#, raids:discord.Option(discord.Role, required=True, max_value=)):
-        await ctx.defer()
+        await ctx.defer(ephemeral=True, invisible=True)
         db = LBDB()
         db.use_db()
         tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -1157,6 +1160,7 @@ def run(bot):
             #embed_length = len(embed.description)
                     
             m:str = g.get('raid_mode')
+
             
             thread = await bot.fetch_channel(g.get('dc_id'))
             channel_id = thread.parent_id
@@ -1165,12 +1169,17 @@ def run(bot):
             url = message.jump_url
 
             if type.name == channel.name:
-           
-                if m.find('Normal') != -1:
+                name =''
+                argos = g.get('raid')
+                if argos.find('Argos') != -1:
+                    name = 'Argos'
+                elif m.find('Normal') != -1:
                     name = f'{g.get("raid")} Normal'
                     
                 elif m.find('Hard') != -1:
                     name = f'{g.get("raid")} Hard'
+                elif m.find('Static') != -1:
+                    name = f'{g.get("raid")} Static'
                 
                 ping = roles.get(name)
 
@@ -1216,20 +1225,22 @@ def run(bot):
             #text_list.append(f'\n*last updated at: {current_time}*')
             text = "\n".join(t for t in text_list)
             embed.description = text
-            #TODO: update view to get roles via update button too
-            await ctx.followup.send(view=RaidOverview(), embed=embed)
+            await ctx.channel.send(view=RaidOverview(), embed=embed)
+            await ctx.followup.send('Send overview', ephemeral=True, delete_after=5)
 
 
-    @bot.slash_command(name="add_dcadmin", description="Adds a user to the admin table ")
+    @bot.slash_command(name="add_dcadmin", description="Adds a admin role to the admin table ")
     @discord.guild_only()
-    async def db_addadmin(ctx, user: discord.Member ):
+    async def db_addadmin(ctx, role: discord.Role ):
         await ctx.defer(ephemeral=True)
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
         db = LBDB()
         db.use_db()
-        member = user
-        u_id = member.id
         
-        result = db.add_admin(u_id)
+        u_id = role.id
+        
+        result = db.add_admin(u_id, guild_name)
+
         db.close()
         await ctx.respond(result, ephemeral=True, delete_after=20)
     
