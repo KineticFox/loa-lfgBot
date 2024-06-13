@@ -373,11 +373,16 @@ class JoinRaid(discord.ui.View):
         author = embed.author.name
         embed_dict = embed.to_dict()
 
+        db = LBDB()
+        db.use_db()
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+
+        admin_role_dict = db.get_admin_role(guild_name)
+
+        admin_role_id = admin_role_dict.get('role_id')
         
 
-        if interaction.user.name != author:
-            await interaction.followup.send('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
-        else:
+        if interaction.user.name == author or interaction.user.get_role(admin_role_id):
             fields = embed_dict.get('fields')
 
             thread_id = None
@@ -401,6 +406,9 @@ class JoinRaid(discord.ui.View):
                 await interaction.followup.send('No users to kick in this thread / Es sind keine User in der Gruppe', ephemeral=True)
             else:
                 await interaction.followup.send(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
+        else:            
+            
+            await interaction.followup.send('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
   
     @discord.ui.button(
         label='Leave',
@@ -1339,7 +1347,54 @@ def run(bot):
 
 
         await ctx.followup.send('Add the chars of the user', view=RemoteAddView(user, tablename, channel, raid, chars, db))
+    
+    @bot.slash_command(name="show_users_groups", description="shows the raids of given user")
+    @discord.guild_only()
+    async def show_user_groups(ctx, user_id):
+        await ctx.defer(ephemeral=True)
+        db = LBDB()
+        db.use_db()
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
 
+        admin_role_dict = db.get_admin_role(guild_name)
+
+        admin_role_id = admin_role_dict.get('role_id')
+
+        if ctx.user.get_role(admin_role_id):
+
+            group_list = db.get_my_raids(int(user_id), guild_name)
+            db.close()
+
+            panel = discord.Embed(
+                title='Group overview / Gruppenübersicht',
+                color=discord.Colour.green(),
+            )
+            chars = []
+            raid = []
+            title =[]
+            dates = []
+
+            for g in group_list:
+                chars.append(g.get('char_name'))
+                raid.append(g.get('raid'))
+                dates.append(g.get('date'))
+                
+                channel = await bot.fetch_channel(g.get('dc_id'))
+                #link = await channel.create_invite()
+                title.append(f'{channel.jump_url} {g.get("date")}')
+
+            e_chars = "\n".join(str(char) for char in chars)
+            e_raid = "\n".join(str(r) for r in raid)
+            e_title = "\n".join(str(t) for t in title)
+            #e_dates = "\n".join(str(d) for d in dates)
+
+            panel.add_field(name='Char', value=e_chars)
+            panel.add_field(name='Raid', value=e_raid)
+            panel.add_field(name='Title', value=e_title)
+
+            await ctx.followup.send(f'Users active Groups / Akktive Gruppen des Benutzers', embed=panel, ephemeral=True)
+        else:
+            await ctx.followup.send("You aren't an admin", embed=panel, ephemeral=True)
 
 
     """  @bot.slash_command(name='user_maintenance')
