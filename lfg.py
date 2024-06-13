@@ -373,11 +373,16 @@ class JoinRaid(discord.ui.View):
         author = embed.author.name
         embed_dict = embed.to_dict()
 
+        db = LBDB()
+        db.use_db()
+        guild_name = ''.join(l for l in interaction.guild.name if l.isalnum())
+
+        admin_role_dict = db.get_admin_role(guild_name)
+
+        admin_role_id = admin_role_dict.get('role_id')
         
 
-        if interaction.user.name != author:
-            await interaction.followup.send('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
-        else:
+        if interaction.user.name == author or interaction.user.get_role(admin_role_id):
             fields = embed_dict.get('fields')
 
             thread_id = None
@@ -401,6 +406,9 @@ class JoinRaid(discord.ui.View):
                 await interaction.followup.send('No users to kick in this thread / Es sind keine User in der Gruppe', ephemeral=True)
             else:
                 await interaction.followup.send(ephemeral=True, view=KickView(user_list, thread, self), embed=embed)
+        else:            
+            
+            await interaction.followup.send('You are not party leader/ Du bist nicht der Partyleiter!!', ephemeral=True)
   
     @discord.ui.button(
         label='Leave',
@@ -728,6 +736,7 @@ def init():
     intents = discord.Intents.all()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents, owner_id=469479291147517952)
+    
     return bot
 
 def stop(bot):
@@ -772,31 +781,99 @@ def run(bot):
     @commands.is_owner()
     async def unload_cog(ctx, cog):
         bot.unload_extension(f'cogs.{cog}')
+    
+    @bot.event
+    async def on_guild_join(guild):
+        logger.info(f'joined Server {guild}')
+        db = LBDB()
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        print(guild_name)
+        db.setup(guild_name)
+        db.close()
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'Bot was add to {guild}')
 
+    @bot.event
+    async def on_guild_remove(guild):
+        logger.info(f'Bot was kicked from {guild}')
+        
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'Bot was kicked from {guild}')
+        
+    
+    @bot.event
+    async def on_guild_integration_update(guild):
+        logger.info(f'Bot was removed from {guild}')
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'Bot was removed from {guild}')
+
+    @bot.event
+    async def on_member_ban(guild, user):
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'User ({user.name} - {user.id}) was banned from {guild_name}')
     
     
     @bot.event
     async def on_ready():
         logger.info(f"We have logged in as {bot.user} ")
-        guilds = []
+        bot.load_extension(f'cogs.server_status')
+        await bot.register_commands()
+        logger.info('loaded all extensions')
+
+        #guilds = []
         db = LBDB()
-        for guild in bot.guilds:
-            t = ''.join(l for l in guild.name if l.isalnum())
-            guilds.append(t)
+        #for guild in bot.guilds:
+        #    t = ''.join(l for l in guild.name if l.isalnum())
+        #    guilds.append(t)
         
-        db.setup(guilds)
+        #db.setup(guilds)
         #set_Raids(db, guilds)
+        db.init()
         bot.add_view(JoinRaid())
         bot.add_view(RaidOverview())
         db.close()
         logger.info('Setup in general done')
 
+    @bot.slash_command(name = "server_setup", description = "Inits the DC-Server to be used with the loabot")
+    @discord.guild_only()
+    async def server_setup(ctx):
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.setup(guild_name)
+        db.close()
     
     @bot.slash_command(name = "hi", description = "say hi")
     @commands.is_owner()
     @discord.guild_only()
     async def hello(ctx):
+        #1250751506190438432
+        
         await ctx.respond(f"hello {ctx.user}")
+
+    @bot.slash_command(name = "remove_tb", description = "Delete all tables of specified DC-Server")
+    @commands.is_owner()
+    async def rm_tb(ctx, server : discord.Option(str, 'DC-Server')):
+        db = LBDB()
+        db.delete_tables(server)
+        db.close()
+
+        await ctx.respond('Deleted Server')
+    
+    @bot.slash_command(name = "show_servers", description = "Shows all Servers of the Bot")
+    @commands.is_owner()
+    async def rm_tb(ctx):
+        all_guilds = await bot.fetch_guilds().flatten()
+
+        cleaned_guilds = ''
+
+        for guild in all_guilds:
+            cleaned_guilds += f'**{guild.name}**({guild.member_count}) - {guild.id}\n'
+
+        await ctx.respond(f'All Server:\n{cleaned_guilds}')
+
+
 
     @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title / Erstellt eine lfg-Party, keine emojis erlaubt.")
     @discord.guild_only()
@@ -1270,7 +1347,54 @@ def run(bot):
 
 
         await ctx.followup.send('Add the chars of the user', view=RemoteAddView(user, tablename, channel, raid, chars, db))
+    
+    @bot.slash_command(name="show_users_groups", description="shows the raids of given user")
+    @discord.guild_only()
+    async def show_user_groups(ctx, user_id):
+        await ctx.defer(ephemeral=True)
+        db = LBDB()
+        db.use_db()
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
 
+        admin_role_dict = db.get_admin_role(guild_name)
+
+        admin_role_id = admin_role_dict.get('role_id')
+
+        if ctx.user.get_role(admin_role_id):
+
+            group_list = db.get_my_raids(int(user_id), guild_name)
+            db.close()
+
+            panel = discord.Embed(
+                title='Group overview / Gruppenübersicht',
+                color=discord.Colour.green(),
+            )
+            chars = []
+            raid = []
+            title =[]
+            dates = []
+
+            for g in group_list:
+                chars.append(g.get('char_name'))
+                raid.append(g.get('raid'))
+                dates.append(g.get('date'))
+                
+                channel = await bot.fetch_channel(g.get('dc_id'))
+                #link = await channel.create_invite()
+                title.append(f'{channel.jump_url} {g.get("date")}')
+
+            e_chars = "\n".join(str(char) for char in chars)
+            e_raid = "\n".join(str(r) for r in raid)
+            e_title = "\n".join(str(t) for t in title)
+            #e_dates = "\n".join(str(d) for d in dates)
+
+            panel.add_field(name='Char', value=e_chars)
+            panel.add_field(name='Raid', value=e_raid)
+            panel.add_field(name='Title', value=e_title)
+
+            await ctx.followup.send(f'Users active Groups / Akktive Gruppen des Benutzers', embed=panel, ephemeral=True)
+        else:
+            await ctx.followup.send("You aren't an admin", embed=panel, ephemeral=True)
 
 
     """  @bot.slash_command(name='user_maintenance')
