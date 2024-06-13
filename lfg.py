@@ -788,11 +788,7 @@ def run(bot):
     @bot.event
     async def on_guild_remove(guild):
         logger.info(f'Bot was kicked from {guild}')
-        guild_name = ''.join(l for l in guild.name if l.isalnum())
-        print(guild_name)
-        #db = LBDB()
-        #db.delete_tables(guild_name)
-        #db.close()
+        
         bot_channel = bot.get_channel(1250751506190438432)
         await bot_channel.send(f'Bot was kicked from {guild}')
         
@@ -801,9 +797,14 @@ def run(bot):
     async def on_guild_integration_update(guild):
         logger.info(f'Bot was removed from {guild}')
         guild_name = ''.join(l for l in guild.name if l.isalnum())
-        print(guild_name)
         bot_channel = bot.get_channel(1250751506190438432)
         await bot_channel.send(f'Bot was removed from {guild}')
+
+    @bot.event
+    async def on_member_ban(guild, user):
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'User ({user.name} - {user.id}) was banned from {guild_name}')
     
     
     @bot.event
