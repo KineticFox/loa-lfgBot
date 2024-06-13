@@ -38,82 +38,75 @@ class LBDB:
 
         chars = f'{guild}_chars'
         groups = f'{guild}_groups' 
-        images = f'{guild}_images'
         messages = f'{guild}_messages'
         raidmember = f'{guild}_raidmember'
-        raids = f'{guild}_raids'
         user = f'{guild}_user'
          
         query = f"""
-        CREATE TABLE {chars} (
-          user_id int NOT NULL,
-          class varchar(50) NOT NULL,
-          ilvl int NOT NULL,
-          role varchar(20) NOT NULL,
-          char_name varchar(70) NOT NULL,
-          emoji varchar(50) NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-        CREATE TABLE {groups} (
-          id int NOT NULL,
-          raid_title varchar(70) NOT NULL,
-          raid varchar(50) NOT NULL,
-          raid_mode varchar(50) NOT NULL,
-          raid_mc int DEFAULT NULL,
-          date varchar(40) DEFAULT NULL,
-          dc_id text DEFAULT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+            CREATE TABLE {chars} (
+            `user_id` int(11) NOT NULL,
+            `class` varchar(50) NOT NULL,
+            `ilvl` int(11) NOT NULL,
+            `role` varchar(20) NOT NULL,
+            `char_name` varchar(70) NOT NULL,
+            `emoji` varchar(50) DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 
-        CREATE TABLE {messages} (
-          m_id text NOT NULL,
-          c_id varchar(30) NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-        CREATE TABLE {raidmember} (
-          raid_id int NOT NULL,
-          user_id int NOT NULL,
-          char_name varchar(70) NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-
-        CREATE TABLE {user} (
-          id int NOT NULL,
-          name varchar(100) NOT NULL,
-          user_id bigint NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-        ALTER TABLE {chars}
-          ADD PRIMARY KEY (char_name),
-          ADD KEY user_id (user_id);
+            CREATE TABLE {groups} (
+            `id` int(11) NOT NULL,
+            `raid_title` varchar(70) NOT NULL,
+            `raid` varchar(50) NOT NULL,
+            `raid_mode` varchar(50) NOT NULL,
+            `raid_mc` int(11) DEFAULT NULL,
+            `date` varchar(40) DEFAULT NULL,
+            `dc_id` text DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 
-        ALTER TABLE {groups}
-          ADD PRIMARY KEY (id);
+            CREATE TABLE {messages} (
+            `m_id` text NOT NULL,
+            `c_id` varchar(30) NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 
-        ALTER TABLE {raidmember}
-          ADD KEY raid_id (raid_id),
-          ADD KEY user_id (user_id),
-          ADD KEY char_name (char_name);
+
+            CREATE TABLE {raidmember} (
+            `raid_id` int(11) NOT NULL,
+            `user_id` int(11) NOT NULL,
+            `char_name` varchar(70) NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 
-        ALTER TABLE {user}
-          ADD PRIMARY KEY (id);
+            CREATE TABLE {user} (
+            `id` int(11) NOT NULL,
+            `name` varchar(100) NOT NULL,
+            `user_id` bigint(20) DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
-        ALTER TABLE {groups}
-          MODIFY id int NOT NULL AUTO_INCREMENT;
+            ALTER TABLE `TechKeller_chars`
+            ADD PRIMARY KEY (`char_name`),
+            ADD KEY `user_id` (`user_id`);
 
-        ALTER TABLE {user}
-          MODIFY id int NOT NULL AUTO_INCREMENT;
+            ALTER TABLE `TechKeller_groups`
+            ADD PRIMARY KEY (`id`);
 
-        ALTER TABLE {chars}
-          ADD CONSTRAINT chars_ibfk_1 FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE ON UPDATE NO ACTION;
 
-        ALTER TABLE {raidmember}
-          ADD CONSTRAINT raidmember_ibfk_1 FOREIGN KEY (raid_id) REFERENCES groups (id),
-          ADD CONSTRAINT raidmember_ibfk_2 FOREIGN KEY (user_id) REFERENCES user (id),
-          ADD CONSTRAINT raidmember_ibfk_3 FOREIGN KEY (char_name) REFERENCES chars (char_name);
+            ALTER TABLE `TechKeller_raidmember`
+            ADD KEY `raid_id` (`raid_id`),
+            ADD KEY `user_id` (`user_id`),
+            ADD KEY `char_name` (`char_name`);
+
+            ALTER TABLE `TechKeller_user`
+            ADD PRIMARY KEY (`id`);
+
+            ALTER TABLE `TechKeller_groups`
+            MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+            ALTER TABLE `TechKeller_user`
+            MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+            COMMIT;
         """
 
         try:
@@ -124,26 +117,54 @@ class LBDB:
             logger.warning(f'DB setup error - {e}')
 
 
+    def init(self):
+        name = os.getenv("DB_NAME")
+        self.cur.execute(f"use {name};")
+        logger.info("DB connection established")
     
-    def setup(self, table_names):
+    def setup(self, guild):
         #self.createTables()
         try:
             name = os.getenv("DB_NAME")
             self.cur.execute(f"use {name};")
             logger.info("DB connection established")
             logger.info("testing if Tables exist")
-            for guild in table_names:
-                sql = guild + '%' 
-                self.cur.execute(f'SELECT count(table_name) FROM information_schema.tables WHERE table_type = "base table" AND table_schema="{name}" AND table_name LIKE ?;', [sql])
-                res = self.cur.fetchone()
-                counter = res['count(table_name)']
-                if counter == 0:
-                    self.createTables(guild)
+            #for guild in table_names:
+            sql = guild + '%' 
+            self.cur.execute(f'SELECT count(table_name) FROM information_schema.tables WHERE table_type = "base table" AND table_schema="{name}" AND table_name LIKE ?;', [sql])
+            res = self.cur.fetchone()
+            counter = res['count(table_name)']
+            if counter == 0:
+                self.createTables(guild)
                     
 
 
         except mariadb.Error as e:
             logger.warning(f'DB setup Error - {e}')
+
+    def delete_tables(self, guild):
+
+        chars = f'{guild}_chars'
+        groups = f'{guild}_groups' 
+        messages = f'{guild}_messages'
+        raidmember = f'{guild}_raidmember'
+        user = f'{guild}_user'
+
+        query = f"""
+            Drop TABLE {chars};
+            Drop TABLE {groups};
+            Drop TABLE {messages};
+            Drop TABLE {raidmember};
+            Drop TABLE {user};
+        """
+        try:
+            name = os.getenv("DB_NAME")
+            self.cur.execute(f"use {name};")
+            self.cur.execute(query)
+            logger.info(f'Deleteing tables for {guild}')
+        
+        except mariadb.Error as e:
+            logger.warning(f'DB delete tables error - {e}')
 
     def use_db(self):
         """

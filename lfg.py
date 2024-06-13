@@ -728,6 +728,7 @@ def init():
     intents = discord.Intents.all()
     intents.message_content = True
     bot = commands.Bot(command_prefix='!', intents=intents, owner_id=469479291147517952)
+    
     return bot
 
 def stop(bot):
@@ -772,31 +773,98 @@ def run(bot):
     @commands.is_owner()
     async def unload_cog(ctx, cog):
         bot.unload_extension(f'cogs.{cog}')
+    
+    @bot.event
+    async def on_guild_join(guild):
+        logger.info(f'joined Server {guild}')
+        db = LBDB()
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        print(guild_name)
+        db.setup(guild_name)
+        db.close()
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'Bot was add to {guild}')
 
+    @bot.event
+    async def on_guild_remove(guild):
+        logger.info(f'Bot was kicked from {guild}')
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        print(guild_name)
+        #db = LBDB()
+        #db.delete_tables(guild_name)
+        #db.close()
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'Bot was kicked from {guild}')
+        
+    
+    @bot.event
+    async def on_guild_integration_update(guild):
+        logger.info(f'Bot was removed from {guild}')
+        guild_name = ''.join(l for l in guild.name if l.isalnum())
+        print(guild_name)
+        bot_channel = bot.get_channel(1250751506190438432)
+        await bot_channel.send(f'Bot was removed from {guild}')
     
     
     @bot.event
     async def on_ready():
         logger.info(f"We have logged in as {bot.user} ")
-        guilds = []
+        bot.load_extension(f'cogs.server_status')
+        await bot.register_commands()
+        logger.info('loaded all extensions')
+
+        #guilds = []
         db = LBDB()
-        for guild in bot.guilds:
-            t = ''.join(l for l in guild.name if l.isalnum())
-            guilds.append(t)
+        #for guild in bot.guilds:
+        #    t = ''.join(l for l in guild.name if l.isalnum())
+        #    guilds.append(t)
         
-        db.setup(guilds)
+        #db.setup(guilds)
         #set_Raids(db, guilds)
+        db.init()
         bot.add_view(JoinRaid())
         bot.add_view(RaidOverview())
         db.close()
         logger.info('Setup in general done')
 
+    @bot.slash_command(name = "server_setup", description = "Inits the DC-Server to be used with the loabot")
+    @discord.guild_only()
+    async def server_setup(ctx):
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.setup(guild_name)
+        db.close()
     
     @bot.slash_command(name = "hi", description = "say hi")
     @commands.is_owner()
     @discord.guild_only()
     async def hello(ctx):
+        #1250751506190438432
+        
         await ctx.respond(f"hello {ctx.user}")
+
+    @bot.slash_command(name = "remove_tb", description = "Delete all tables of specified DC-Server")
+    @commands.is_owner()
+    async def rm_tb(ctx, server : discord.Option(str, 'DC-Server')):
+        db = LBDB()
+        db.delete_tables(server)
+        db.close()
+
+        await ctx.respond('Deleted Server')
+    
+    @bot.slash_command(name = "show_servers", description = "Shows all Servers of the Bot")
+    @commands.is_owner()
+    async def rm_tb(ctx):
+        all_guilds = await bot.fetch_guilds().flatten()
+
+        cleaned_guilds = ''
+
+        for guild in all_guilds:
+            cleaned_guilds += f'**{guild.name}**({guild.member_count}) - {guild.id}\n'
+
+        await ctx.respond(f'All Server:\n{cleaned_guilds}')
+
+
 
     @bot.slash_command(name="lfg", description="creates a raid, no emojis allowed in title / Erstellt eine lfg-Party, keine emojis erlaubt.")
     @discord.guild_only()
