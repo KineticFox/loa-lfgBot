@@ -28,4 +28,12 @@ roles = {
     'Thaemine Static': '1230123614821683302',
     'Akkan Static': '1230123560828276846',
     'Elfenbeinturm Static': '1230123797147947128',
+    'Echidna Normal' : '1250785402705416223',
+    'Echidna Hard' : '1250785573619236864',
+    'Echidna Static' : '1250785688891428875',
+    'Behemoth Normal' : '1282982943953915985',
+    'Behemoth Static' : '1282983783284473907',
+    'Aegir Normal' : '1282983275085824000',
+    'Aegir Hard' : '1282983526328832021',
+    'Aegir Static' : '1282983951341977693',
 }
