@@ -397,7 +397,7 @@ class RaidType(discord.ui.Select):
         self.parentview = parentview
         self.raids = []
         def set_options():
-            types = ['Legion', 'Abyssal', 'Guardian']
+            types = ['Legion', 'Kazeros', 'Abyssal', 'Epic', 'Guardian']
             list = []
             for t in types:
                 list.append(discord.SelectOption(label=t))
