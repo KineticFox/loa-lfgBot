@@ -819,6 +819,7 @@ def run(bot):
     async def on_ready():
         logger.info(f"We have logged in as {bot.user} ")
         bot.load_extension(f'cogs.server_status')
+        bot.load_extension(f'cogs.admin')
         await bot.register_commands()
         logger.info('loaded all extensions')
 

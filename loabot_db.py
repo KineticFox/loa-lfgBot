@@ -528,7 +528,7 @@ class LBDB:
             logger.warning(f'Database get raid Error - {e}')
             return ['error']
 
-    def save_image(self, raid, url, table):
+    def save_image(self, raid, url, table) -> int:
         """
         Saves the image url with the raid name
 
@@ -539,17 +539,27 @@ class LBDB:
             table (string): refers on which DC-Server this command is invoked
 
         Returns:
-        --------
-            None
+        ----------
+            0 (int): worked
+            1 (int): image already exists
+            2 (int): Raid doesnt exist
         """
         try:
-            self.cur.execute(f'SELECT * FROM {table}_images WHERE raid=?', [raid])
-            result = self.cur.fetchone()
-
-            if result is None:
-                self.cur.execute(f'INSERT INTO {table}_images(raid, url) VALUES(?, ?)', [raid, url]) 
+            self.cur.execute(f'SELECT name FROM {table}_raids1 WHERE name=?', [raid])
+            name_check = self.cur.fetchone()
+            if name_check is None:
+                return 2
             else:
-                logger.debug(f'Images for {raid} already exists')
+
+                self.cur.execute(f'SELECT * FROM {table}_images WHERE raid=?', [raid])
+                result = self.cur.fetchone()
+                
+                if result is None:
+                    self.cur.execute(f'INSERT INTO {table}_images(raid, url) VALUES(?, ?)', [raid, url])
+                    return 0 
+                else:
+                    logger.debug(f'Images for {raid} already exists')
+                    return 1
             
         except mariadb.Error as e:
             logger.warning(f'Database save image Error - {e}')
@@ -605,22 +615,29 @@ class LBDB:
     
         
     
-    def add_raids(self, name, modes, member, rtype, table):
+    def add_raids(self, name, modes, member, rtype, table, order):
         # modes  must be in format '{"modes":["Normal Mode, 1370","...", ...]}'
         try:
-            self.cur.execute(f'SELECT * FROM {table}_raids WHERE name=?', [name])
+            self.cur.execute(f'SELECT * FROM {table}_raids1 WHERE name=?', [name])
             result = self.cur.fetchone()
             if result is None:
-                self.cur.execute(f'INSERT INTO {table}_raids(name, modes, member, type) VALUES (?, ?, ?, ?)', [name, modes, member, rtype])
-                return 1
+                self.cur.execute(f'INSERT INTO {table}_raids1(name, modes, member, type, raid_order) VALUES (?, ?, ?, ?, ?)', [name, modes, member, rtype, order])
+                return 0
             else:
                 logger.debug(f'Raid {name} already exists, updating instead')
-                self.cur.execute(f'UPDATE {table}_raids SET modes=?, member=?, type=? WHERE name=?', [modes, member, rtype, name])
-                return 0
+                self.cur.execute(f'UPDATE {table}_raids1 SET modes=?, member=? WHERE name=?', [modes, member, name])
+                return 1
 
         except mariadb.Error as e:
             logger.warning(f'Add raid insertion error: {e}')
-
+    
+    def get_raid_orders(self, raidtype) -> list:
+        try:
+            self.cur.execute('SELECT raid_order FROM TechKeller_raids1 WHERE type=? ORDER BY raid_order ASC',[raidtype])
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'Add raid insertion error: {e}')
 
     
     def add_chars(self, chars, cl, user, ilvl, role, table, user_id, emoji):
