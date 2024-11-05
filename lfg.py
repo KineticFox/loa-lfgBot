@@ -998,81 +998,75 @@ def run(bot):
             db.close()
             await ctx.followup.send(f'Characters - {ctx.author.name}', embed=panel, ephemeral=True)
 
-    @bot.slash_command(name="update_raids", description="Updates Raids")
-    @discord.guild_only()
-    async def db_updateraids(ctx):
-        await ctx.defer()
-        db = LBDB()
-        db.use_db()
-        raid_file = open('data/loa_data.json')
-        data = json.load(raid_file)
-        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+    #@bot.slash_command(name="update_raids", description="Updates Raids")
+    #@discord.guild_only()
+    #async def db_updateraids(ctx):
+    #    await ctx.defer()
+    #    db = LBDB()
+    #    db.use_db()
+    #    raid_file = open('data/loa_data.json')
+    #    data = json.load(raid_file)
+    #    tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
 
-        url = db.get_image_url('default', 'TechKeller')
-        if url is None:
-            file = discord.File(f'ressources/loa.png', filename=f'loa.png')
-            attachment = await ctx.followup.send('Uploaded image', file=file)
-            
-            url = attachment.attachments[0].url
-            db.save_image('default', url, 'TechKeller')
+    #    url = db.get_image_url('default', 'TechKeller')
+    #    if url is None:
+    #        file = discord.File(f'ressources/loa.png', filename=f'loa.png')
+    #        attachment = await ctx.followup.send('Uploaded image', file=file)
+    #        
+    #        url = attachment.attachments[0].url
+    #        db.save_image('default', url, 'TechKeller')
 
-        for i in data['raids']:
-            code = db.add_raids(i['name'], i['modes'], i['member'], i['rtype'], 'TechKeller')
-            if code != 0:
-                if i['rtype'] == 'Legion' or i['rtype'] == 'Abyssal':
-                    fname_lower = i['name'].lower()
-                    custom = fname_lower.split(' ')[0]
-                    if custom == 'custom':
-                        continue
-                    file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
-                    attachment = await ctx.followup.send('Uploaded image', file=file)
-                    #await asyncio.sleep(2)
-                    url = attachment.attachments[0].url
-                    db.save_image(fname_lower, url, 'TechKeller')
-                
-
-
+    #    for i in data['raids']:
+    #        code = db.add_raids(i['name'], i['modes'], i['member'], i['rtype'], 'TechKeller')
+    #        if code != 0:
+    #            if i['rtype'] == 'Legion' or i['rtype'] == 'Abyssal':
+    #                fname_lower = i['name'].lower()
+    #                custom = fname_lower.split(' ')[0]
+    #                if custom == 'custom':
+    #                    continue
+    #                file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
+    #                attachment = await ctx.followup.send('Uploaded image', file=file)
+    #                #await asyncio.sleep(2)
+    #                url = attachment.attachments[0].url
+    #                db.save_image(fname_lower, url, 'TechKeller')        
         
-        
+    #    raid_file.close()
 
-
-        raid_file.close()
-
-        await ctx.followup.send(f'added the new Raids', delete_after=20)      
+    #    await ctx.followup.send(f'added the new Raids', delete_after=20)      
         #set_Raids(db, 'TechKeller')
-        db.close()
+    #    db.close()
     
-    @bot.slash_command(name="upload_image", description="Upload specific raid image")
-    @discord.guild_only()
-    async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)): # type: ignore
-        file = discord.File(f'ressources/{name}.png', filename=f'{name}.png')
-        db = LBDB()
-        db.use_db()
-        attachment = await ctx.send('Uploaded image', file=file)
-        url = attachment.attachments[0].url
-        db.save_image(name, url, 'TechKeller')
-        db.close()
+    #@bot.slash_command(name="upload_image", description="Upload specific raid image")
+    #@discord.guild_only()
+    #async def upload_image(ctx, name:discord.Option(str, 'image name', required=True)): # type: ignore
+    #    file = discord.File(f'ressources/{name}.png', filename=f'{name}.png')
+    #    db = LBDB()
+    #    db.use_db()
+    #    attachment = await ctx.send('Uploaded image', file=file)
+    #    url = attachment.attachments[0].url
+    #    db.save_image(name, url, 'TechKeller')
+    #    db.close()
 
-    @bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
-    @commands.is_owner()
-    @discord.guild_only()
-    async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)): # type: ignore
-        tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
-        db = LBDB()
-        db.use_db()
-        db.add_raids(name,modes,member,raidtype, 'TechKeller')
+    #@bot.slash_command(name="add_raids", description="Adds a new Raid to lfg selection")
+    #@commands.is_owner()
+    #@discord.guild_only()
+    #async def db_addraid(ctx, name: discord.Option(str, 'Raidname', required=True), modes: discord.Option(str, 'Modes', required=True), member: discord.Option(int, 'Playercount', required=True), raidtype: discord.Option(str, 'rtype', choices=raid_type,required=True)): # type: ignore
+    #    tablename = ''.join(l for l in ctx.guild.name if l.isalnum())
+    #    db = LBDB()
+    #    db.use_db()
+    #    db.add_raids(name,modes,member,raidtype, 'TechKeller')
 
-        await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
+    #    await ctx.respond(f'added the new Raid {name}', ephemeral=True, delete_after=20)
         
-        if raidtype == 'Legion' or raidtype == 'Abyssal':
-            fname_lower = name.lower()
-            file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
-            attachment = await ctx.send('Uploaded image', file=file)
-            url = attachment.attachments[0].url
-            db.save_image(fname_lower, url, 'TechKeller')
+    #    if raidtype == 'Legion' or raidtype == 'Abyssal':
+    #        fname_lower = name.lower()
+    #        file = discord.File(f'ressources/{fname_lower}.png', filename=f'{fname_lower}.png')
+    #        attachment = await ctx.send('Uploaded image', file=file)
+    #        url = attachment.attachments[0].url
+    #        db.save_image(fname_lower, url, 'TechKeller')
 
         #set_Raids(db)
-        db.close()
+    #    db.close()
     
     
     @bot.slash_command(name="clear")
@@ -1306,21 +1300,6 @@ def run(bot):
             await ctx.channel.send(view=RaidOverview(), embed=embed)
             await ctx.followup.send('Send overview', ephemeral=True, delete_after=5)
 
-
-    @bot.slash_command(name="add_dcadmin", description="Adds a admin role to the admin table ")
-    @discord.guild_only()
-    async def db_addadmin(ctx, role: discord.Role ):
-        await ctx.defer(ephemeral=True)
-        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
-        db = LBDB()
-        db.use_db()
-        
-        u_id = role.id
-        
-        result = db.add_admin(u_id, guild_name)
-
-        db.close()
-        await ctx.respond(result, ephemeral=True, delete_after=20)
     
     @bot.slash_command(name="register_char", description="Adds a given char of the user to the DB / Fügt für deinen Benutzer einen Charakter hinzu")
     @discord.guild_only()

@@ -47,6 +47,37 @@ class AdminCommands(commands.Cog):
             await ctx.respond(f'Raid {name} does not exist', ephemeral=True, delete_after=20)
         
         db.close()
+    
+    @admin.command("set_admin_role")
+    async def add_admin_role(self, ctx, role:discord.Role):
+        await ctx.defer(ephemeral=True)
+        guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
+        db = LBDB()
+        db.use_db()
+        
+        u_id = role.id
+        
+        result = db.add_admin(u_id, guild_name)
+
+        db.close()
+        if result == 0:
+            await ctx.respond("Add Role as admin role", ephemeral=True, delete_after=20)
+        elif result == 1:
+            await ctx.respond("Admin role already exist", ephemeral=True, delete_after=20)
+    
+    @admin.command("delete_user")
+    async def delete_user(self, ctx, user):
+        db = LBDB()
+        db.use_db()
+        #add logic
+
+        #get possible groups of user
+
+        #kick from those groups
+
+        #delte chars of user
+
+        #delete user
 
 def setup(bot):
     bot.add_cog(AdminCommands(bot))

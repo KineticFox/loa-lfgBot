@@ -759,7 +759,7 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'group overview DB error - {e}')
     
-    def add_admin(self, role_id:str, guild_name : str)->str:
+    def add_admin(self, role_id:str, guild_name : str)->int:
         """
         Adds user_id to the Discord Admins table.
         """
@@ -767,13 +767,13 @@ class LBDB:
             self.cur.execute(f'SELECT id FROM Techkeller_admins WHERE role_id=?', [role_id])
             res = self.cur.fetchall()
             if len(res) != 0:
-                logger.info(f'User already exists in DB')
-                return f'Role already exists in DB'
+                logger.info(f'Role already exists in DB')
+                return 1
             else:
                 self.cur.execute(f'INSERT INTO Techkeller_admins(user_id, guild) VALUES (?)', [role_id, guild_name])
-                return f'added the role to the DB'
+                return 0
         except mariadb.Error as e:
-            logger.warning(f'Add user admin insert error: {e}')
+            logger.warning(f'Add admin role insert error: {e}')
     
     def get_admin_role(self, guild_name : str) -> int:
         """
