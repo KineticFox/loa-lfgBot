@@ -48,7 +48,7 @@ class AdminCommands(commands.Cog):
         
         db.close()
     
-    @admin.command("set_admin_role")
+    @admin.command(name="set_admin_role")
     async def add_admin_role(self, ctx, role:discord.Role):
         await ctx.defer(ephemeral=True)
         guild_name = ''.join(l for l in ctx.guild.name if l.isalnum())
@@ -65,7 +65,7 @@ class AdminCommands(commands.Cog):
         elif result == 1:
             await ctx.respond("Admin role already exist", ephemeral=True, delete_after=20)
     
-    @admin.command("delete_user")
+    @admin.command(name="delete_user")
     async def delete_user(self, ctx, user):
         db = LBDB()
         db.use_db()
