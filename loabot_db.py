@@ -190,17 +190,25 @@ class LBDB:
             raid (str): raid,
             raid_title (str): title of the group,
             date(str): list of raid dates,
-            dc_id (str): thread id of the group
+            dc_id (str): thread id of the group,
+            id: id of the group
         """
 
         try:
-            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id, {table}_groups.date FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
+            self.cur.execute(f'SELECT {table}_raidmember.char_name, {table}_groups.raid, {table}_groups.raid_title, {table}_groups.dc_id, {table}_groups.id, {table}_groups.date FROM {table}_raidmember INNER JOIN {table}_groups ON {table}_raidmember.raid_id={table}_groups.id AND {table}_raidmember.user_id=(SELECT id FROM {table}_user WHERE user_id=?)', [user_id])
             res = self.cur.fetchall()
             return res            
         
         except mariadb.Error as e:
             logger.warning(f'DB get my raids Error - {e}')
-        
+    
+    def get_raw_user(self, discord_id : int, discord_name: str) -> 'list[dict]':
+        try:
+            self.cur.execute(f'SELECT * FROM {discord_name}_user WHERE user_id=?', [discord_id])
+            res = self.cur.fetchall()
+            return res
+        except mariadb.Error as e:
+            logger.warning(f'DB get raw user info Error: {e}')
 
     def get_chars(self, user_id, table) -> 'list[dict]':
         """
@@ -220,7 +228,18 @@ class LBDB:
         except mariadb.Error as e:
             logger.warning(f'Database get chars Error - {e}')
             return ['error']
-        
+
+    def delete_chars(self, user_id:int, table: str):
+        """
+        Deletes all chars of given Player
+        """
+
+        try:
+            self.cur.execute(f'DELETE FROM {table}_chars WHERE (SELECT id FROM {table}_user WHERE user_id=?)=user_id',[user_id])
+
+        except mariadb.Error as e:
+            logger.warning(f'DB delte chars Error: {e}')
+
     def get_char_ilvl(self, name, table) -> dict:
         """
         DB Helperfunction for one ilvl of a specified char name
